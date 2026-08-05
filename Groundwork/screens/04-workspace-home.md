@@ -2,7 +2,7 @@
 
 **Route:** `/workspaces/:id`
 **Platform:** Both
-**Purpose:** The main hub for a workspace — shows engine status, lets the user ask a question, and surfaces recent reports and quick access to the semantic layer ([[features]] FEAT-011, FEAT-012, FEAT-013, FEAT-034).
+**Purpose:** The main hub for a workspace — shows engine status, lets the user ask a question, and surfaces recent reports and quick access to the semantic layer ([[features]] FEAT-011, FEAT-012, FEAT-013, FEAT-034, FEAT-019).
 **Entry Points:** [[03-workspace-list|Workspace List]], [[07-ingest-confirmation|Ingest Confirmation]] (after first ingest), [[09-report-view|Report View]] ("back to workspace"), [[16-notifications|Notifications]] (deep link).
 **Exit Points:** [[05-file-upload|File Upload]], [[08-run-viewer|Run Viewer]] (on question submit), [[09-report-view|Report View]] (recent report list), [[13-workspace-settings|Workspace Settings]], [[15-semantic-layer|Semantic Layer / Corrections]].
 
@@ -28,13 +28,13 @@
 | Engine Status Pill | Shared component | Both | Shows `sleeping`/`waking`/`ready` honestly at all times | GET `/api/workspaces/:id` (polled or streamed) |
 | Ask input | TextInput / TextField | Both | Entry point for a new question, triggers [[08-run-viewer\|Run Viewer]] | User input |
 | Recent report card | Card | Both | Title, timestamp, one-line summary, thumbnail chart | GET `/api/workspaces/:id/reports?limit=10` |
-| Semantic layer summary | Panel | Web only (compact) | Quick counts + link to [[15-semantic-layer\|Semantic Layer / Corrections]] | GET `/api/workspaces/:id/semantic-layer/summary` |
-| Upload data prompt | Button | Both | Shown when no files ingested yet, routes to [[05-file-upload\|File Upload]] | — |
+| Semantic layer summary | Panel | Web only (compact) | Quick counts + link to [[15-semantic-layer\|Semantic Layer / Corrections]] ([[features]] FEAT-019) | GET `/api/workspaces/:id/semantic-layer/summary` |
+| Upload data prompt | Button | Both | Shown when no files ingested yet, routes to [[05-file-upload\|File Upload]] | GET `/api/workspaces/:id` (`has_datasets` field) |
 
 ### Data Requirements
 
 **Data Needed:**
-- Workspace metadata: name, engine status — from GET `/api/workspaces/:id`
+- Workspace metadata: name, engine status, `has_datasets` (boolean, true once at least one `Dataset` exists for this workspace, per [[schema]]) — from GET `/api/workspaces/:id`
 - Recent reports (id, title, created_at, summary snippet, thumbnail chart spec) — from GET `/api/workspaces/:id/reports?limit=10`
 - Semantic layer counts (relationship count, metric definition count) — from GET `/api/workspaces/:id/semantic-layer/summary`
 
@@ -43,6 +43,7 @@
 2. Focusing the Ask input triggers wake-on-intent (FEAT-012) if engine status is `sleeping` — status pill updates to `waking` without blocking the input.
 3. Submitting a question while `waking` queues the question and navigates to [[08-run-viewer|Run Viewer]] immediately; the run shows `waking` as its first visible step rather than blocking here.
 4. Recent reports fetched in parallel with workspace metadata.
+5. The "Upload data" button's visibility is driven directly by `has_datasets` from the same workspace-metadata fetch (step 1) — shown while `false`, hidden once `true` — rather than rendering unconditionally.
 
 ### States
 

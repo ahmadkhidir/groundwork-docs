@@ -102,12 +102,15 @@ On upload, the platform provisions a disposable, session-scoped OLAP engine, ing
 As Chidinma, I want the platform to profile my uploaded data automatically, so that type inference, PII flagging, and join inference all have real statistics to work from.
 
 **Description:**
-After ingest, the platform computes per-column statistics — distinct value counts, cardinality, min/max, null rates, inferred type — that ground every downstream ingest-confirmation step.
+After ingest, the platform computes per-column statistics — distinct value counts, cardinality, null rates, inferred type — that ground every downstream ingest-confirmation step. Min/max are deliberately not computed or stored in Phase 1 — no acceptance criterion here or in [[schema]]'s `Column` needs them yet; add them as a field on `Column` (owned by this feature) if and when a later feature's acceptance criteria actually requires range statistics, rather than computing them speculatively now.
+
+`type_confidence` (per [[schema]] `Column`) is shown to the user as one of three bands — **HIGH** (≥0.85), **MEDIUM** (0.6–0.84), **LOW** (<0.6) — and those bands, plus what each means to the user ("HIGH: apply with confidence," "MEDIUM/LOW: review before trusting"), are the specified, user-facing contract. The scoring heuristic behind the number (pattern-match strength against sampled non-null values, consistency across the sample) is implementation-defined and may be tuned without a docs change, as long as the band thresholds and their meaning stay fixed.
 
 **Acceptance Criteria:**
 - [ ] Every ingested column has computed distinct-value count, null rate, and inferred type
 - [ ] Profiling completes and is reviewable before the user asks their first question
 - [ ] Profiling statistics are stored and retrievable, not recomputed on every use
+- [ ] `type_confidence` is presented to the user using the HIGH/MEDIUM/LOW bands defined above, not a raw decimal alone
 
 ### FEAT-006: Type Inference Review & Confirmation
 
@@ -119,12 +122,12 @@ After ingest, the platform computes per-column statistics — distinct value cou
 As Chidinma, I want to review and correct inferred column types before I start querying, so that a wrong type inference doesn't silently produce wrong answers later.
 
 **Description:**
-Part of the ingest confirmation step ([[README]] — highest-risk UX). The user reviews inferred types per column and can override them before the semantic layer is seeded.
+Part of the ingest confirmation step ([[README]] — highest-risk UX). The user reviews inferred types per column and can override them before the semantic layer is seeded. In Phase 1, a type correction is a per-`Column` override: it applies to that column for the life of that ingested [[schema|Dataset]], and is used by every subsequent question against that dataset. Automatically recognizing "the same schema shape" on a *later, separate* file upload (e.g. re-uploading the same monthly export) and replaying prior corrections onto the fresh columns is out of scope here — no schema-shape identity (what a "shape" hash covers: column names, order, and inferred types, at minimum) is defined anywhere yet, and inventing one is a real design decision, not a one-line fix. That capability is deferred to [[#FEAT-019 Semantic Layer Storage|FEAT-019]] (Phase 2), which is already the workspace-level, cross-session memory this behavior conceptually belongs in; see FEAT-019's description for the deferred note.
 
 **Acceptance Criteria:**
 - [ ] User sees inferred type for every column with the option to change it
 - [ ] Confirmation step has sane defaults and can be skipped without leaving it in an undefined state
-- [ ] Type corrections are stored and used for all subsequent ingest of the same schema shape
+- [ ] A type correction is stored on the corrected `Column` and used for every subsequent question against that same ingested dataset (not replayed onto a later, separately-uploaded file, even one with an identical schema — see description)
 
 ### FEAT-007: PII Detection & Flagging at Ingest
 
@@ -140,8 +143,9 @@ At ingest, likely-sensitive columns (emails, national IDs, card patterns, names)
 
 **Acceptance Criteria:**
 - [ ] Columns matching common PII patterns are flagged automatically at ingest
-- [ ] Flagged columns default to name-and-type-only exposure to the model
+- [ ] Flagged columns default to name-and-type-only exposure to the model — enforced by the payload-construction rule specified in [[#FEAT-013 Natural-Language Question → SQL Generation|FEAT-013]], since FEAT-013 is the first feature that builds a model payload
 - [ ] User can review flagged columns during ingest confirmation and override the flag
+- [ ] Overriding (or explicitly confirming) a PII flag is recorded as a timestamped, explicit user decision — `Column.pii_reviewed_at` per [[schema]] — and logged as a `pii_override` entry in the audit log, so a column that was reviewed-and-cleared is distinguishable later from one that was simply never flagged
 - [ ] Flagging happens without requiring the user to understand the underlying detection method
 
 ### FEAT-008: Multi-File Relationship Inference
@@ -156,9 +160,12 @@ As Chidinma, I want the platform to infer likely joins between my uploaded files
 **Description:**
 At ingest, when multiple files are uploaded, the platform runs a relationship-inference pass — name similarity, type compatibility, value overlap sampling, cardinality checks — and produces candidate joins with confidence scores.
 
+**Confidence Scoring:** `confidence_score` (per [[schema]] `CandidateJoin`) is presented to the user using the same HIGH (≥0.85) / MEDIUM (0.6–0.84) / LOW (<0.6) bands as `type_confidence` in [[#FEAT-005 Data Profiling|FEAT-005]], and the score must be informed by at least these signals: column-name similarity, type compatibility, value-overlap sampling, and a cardinality/uniqueness check on the candidate key. The exact weighting between these signals is implementation-defined and may be tuned without a docs change — but one presentation-facing rule is a hard requirement, not implementation-defined: **a candidate join whose only meaningful evidence is value overlap on a column that is not identifier-shaped (e.g. a money/measure column like `total` or `amount`, as opposed to an `id`/`key`/`code`-named or near-unique column) must be capped at MEDIUM, never reported as HIGH.** Two unrelated numeric measure columns overlapping in value by chance is common and is not, on its own, evidence of a real relationship. When this cap is applied, `basis` must say so explicitly (e.g., "capped: value overlap only, not an identifier column").
+
 **Acceptance Criteria:**
 - [ ] Candidate joins are generated automatically when 2+ files are uploaded to the same workspace
-- [ ] Each candidate join shows a confidence score and the basis for it (e.g., matched column names, value overlap %)
+- [ ] Each candidate join shows a confidence score — presented via the HIGH/MEDIUM/LOW bands above, not a raw decimal alone — and the basis for it (e.g., matched column names, value overlap %)
+- [ ] A candidate join whose only evidence is value overlap on a non-identifier-shaped numeric column is capped at MEDIUM and its `basis` states the cap was applied
 - [ ] No join is silently assumed — every candidate requires explicit confirmation before use in queries
 
 ### FEAT-009: Candidate Join Review, Accept, Reject
@@ -171,12 +178,12 @@ At ingest, when multiple files are uploaded, the platform runs a relationship-in
 As Ngozi, I want to review and confirm which candidate joins are correct before the platform uses them, so that I catch a wrong relationship before it silently corrupts a reconciliation.
 
 **Description:**
-The user-facing half of [[#FEAT-008 Multi-File Relationship Inference|FEAT-008]] — part of the mandatory ingest confirmation flow.
+The user-facing half of [[#FEAT-008 Multi-File Relationship Inference|FEAT-008]] — part of the mandatory ingest confirmation flow. "The same files," for the purpose of never silently reintroducing a rejected join, means the identity **`(workspace, Dataset.original_filename, Column.name)`** — a rejected candidate is suppressed on a later ingest by matching against prior `rejected` `CandidateJoin` rows in the same workspace whose source/target column names and parent dataset filenames match, with no new persisted entity required. This is a deliberate, documented heuristic, not a placeholder: it has two known, accepted limits — renaming a file loses the rejection (the user would see the candidate again and can reject it again), and two genuinely different files that happen to share both a filename and a column name would wrongly suppress a candidate that deserved fresh review. A content-hash-based identity (keyed to the dataset's actual bytes rather than its filename) would close both gaps and is a candidate future improvement if either limit is observed to matter in practice — it is not scoped as a Phase 1 acceptance criterion.
 
 **Acceptance Criteria:**
 - [ ] User can accept, reject, or manually adjust each candidate join
 - [ ] Accepted joins are seeded into the semantic layer ([[#FEAT-019 Semantic Layer Storage|FEAT-019]])
-- [ ] Rejected joins are never silently reintroduced on a later session with the same files
+- [ ] Rejected joins are never silently reintroduced on a later session with the same files, where "same files" is matched on `(workspace, original filename, column name)` per this feature's description, with its stated limits accepted as intended behavior
 
 ### FEAT-010: Column-Level Exclusion
 
@@ -244,10 +251,13 @@ As Tunde, I want to ask a question in plain English and get an answer grounded i
 **Description:**
 The foundational two-stage mechanism: the model does not answer from data placed in its context. It plans a query from schema/profiling/semantic-layer metadata and writes SQL, which [[#FEAT-014 SQL Execution & Fact Return|FEAT-014]] executes.
 
+This is the first feature to construct any payload sent to the model, which makes it the enforcement point for [[#FEAT-007 PII Detection & Flagging at Ingest|FEAT-007]]'s exposure rule: **payload construction MUST read `Column.pii_flag` (and `excluded_from_model`, per [[#FEAT-010 Column-Level Exclusion|FEAT-010]]) and reduce any flagged or excluded column to name-and-type only before it can reach the model — never its values.** This MUST be implemented as one shared payload-construction function used by every model-calling step (`plan`, `generate_sql`, and later `adversarial_review`/`narrate`), not per-step ad hoc filtering, precisely so a future step can't forget to filter — see [[architecture]]'s note on this seam. See [[risk_log]] R-016 for the risk this closes.
+
 **Acceptance Criteria:**
 - [ ] User can type a natural-language question against their ingested data
 - [ ] The model's response is always backed by generated SQL — there is no code path where the model answers directly from a data dump in context
 - [ ] Generated SQL references confirmed types, confirmed joins, and the semantic layer, not raw guesses
+- [ ] Every payload sent to the model is built through the single shared payload-construction function described above; no column with `pii_flag: true` or `excluded_from_model: true` ever has its values (as opposed to its name and type) included in a model payload
 - [ ] Ambiguous or unanswerable questions are handled via [[#FEAT-033 Honest Uncertainty|FEAT-033]] rather than a best-effort guess
 
 ### FEAT-014: SQL Execution & Fact Return
@@ -345,7 +355,7 @@ SQL is always visible, never hidden behind an affordance, and directly editable.
 As Chidinma, I want the platform to remember relationships, grain, and metric definitions across sessions, so that I don't have to re-teach the same business logic every time.
 
 **Description:**
-Rows in the application database — relationships, grain, metric definitions, business meaning, accumulated corrections — keyed to the workspace, sitting between raw schema and the model.
+Rows in the application database — relationships, grain, metric definitions, business meaning, accumulated corrections — keyed to the workspace, sitting between raw schema and the model. A future extension of this store — not yet a scoped acceptance criterion, and not yet designed — is recognizing a re-uploaded file as "the same schema shape" as a prior ingest and automatically replaying its stored type corrections onto the fresh columns, deferred here from [[#FEAT-006 Type Inference Review & Confirmation|FEAT-006]] (see FEAT-006's description). Scoping this properly requires defining a schema-shape identity (at minimum: column names, order, and inferred types) before it becomes a feature commitment, not an ingest-time speculation.
 
 **Acceptance Criteria:**
 - [ ] Confirmed joins, types, and metric definitions persist in the semantic layer beyond a single session

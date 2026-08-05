@@ -64,6 +64,7 @@ Groundwork is a single Go backend service (the only backend — see the Boundary
 **Platform Notes:**
 - Stores the ingested and normalized Parquet, never the original CSV/Excel file, as the durable artifact — re-parsing a messy source file on every rebuild is both slower and a correctness risk (type inference could differ between rebuilds).
 - Relationship inference (name similarity, type compatibility, value overlap sampling, cardinality checks) runs as part of this pipeline whenever 2+ files are uploaded, producing candidates that are never auto-applied — see [[features]] FEAT-008/FEAT-009.
+- Ingesting Excel or SQLite requires a DuckDB extension (`excel`, `sqlite_scanner`) that is fetched at runtime from `extensions.duckdb.org` on first use unless preinstalled. This is an accepted, documented runtime network dependency, not an oversight — see [[risk_log]] R-017 and the Deployment Topology note below. CSV and Parquet ingest have no such dependency.
 
 ### Component: Semantic Layer Store
 
@@ -112,7 +113,7 @@ Groundwork is a single Go backend service (the only backend — see the Boundary
 - **Synchronous (ingest & ask):** Web Client → Go API Service → Engine Provider (acquire engine) / Ingest Pipeline / Durable Orchestration Engine, with results streamed back as they become available rather than returned in one blocking response.
 - **Streaming (live run events):** Each step boundary written to `steps` in Postgres also emits a live event over a persistent connection to the Web Client, so the run viewer reflects progress in real time without polling.
 - **Asynchronous (durable notifications):** A low-frequency, persisted notification (export ready, engine slept, ingest failed) is written separately from the high-frequency live event stream, deliberately using a different code path so the durable notification store doesn't fill with step-level noise — see [[features]] FEAT-026.
-- **External egress (model calls):** Any payload leaving the Go API Service toward the Anthropic API is schema/profile/aggregate metadata by default, never raw rows, and is written to the Audit & Egress Log at the moment it is sent — the log entry and the outbound call are part of the same code path, not reconciled after the fact.
+- **External egress (model calls):** Any payload leaving the Go API Service toward the Anthropic API is schema/profile/aggregate metadata by default, never raw rows, and is written to the Audit & Egress Log at the moment it is sent — the log entry and the outbound call are part of the same code path, not reconciled after the fact. Exclusion of any `pii_flag`-ed or `excluded_from_model` column's values (per [[features]] FEAT-007/FEAT-010) is enforced by one shared payload-construction function used by every model-calling step (`plan`, `generate_sql`, `adversarial_review`, `narrate`) — never per-step ad hoc filtering — specifically so the rule in [[features]] FEAT-013 cannot be silently bypassed by a future step that forgets to filter. See [[risk_log]] R-016 for the risk this seam closes.
 - **Rebuild-on-wake:** Waking a workspace attaches Parquet views from R2 (metadata-only, independent of dataset size) and, if a valid `.duckdb` snapshot exists and opens successfully, warms from it; if the snapshot is missing or fails to open (e.g., a storage-version mismatch), the engine falls back to Parquet views automatically and silently, with no user-visible failure.
 
 ## External Integrations
@@ -125,6 +126,7 @@ Groundwork is a single Go backend service (the only backend — see the Boundary
 | Neon (Postgres) | App database and durable orchestration state | Outbound (standard Postgres protocol) | High — the system of record for everything that isn't raw data |
 | Authentication provider | User sign-in/session handling | Inbound (auth callback) / session validation | High — gates all access to workspace data |
 | Transactional Email Provider | Delivers password reset links ([[features]] FEAT-001); the only outbound email the product sends today | Outbound (API calls, from the Go API Service) | Medium — account recovery is blocked without it, but no other flow depends on it |
+| DuckDB Extension Repository (`extensions.duckdb.org`) | Runtime `INSTALL` of the `excel`/`sqlite_scanner` extensions on first Excel/SQLite ingest, unless preinstalled at image build time | Outbound (HTTPS fetch, from the Ingest & Profiling Pipeline via the Engine Provider) | Medium — required only for Excel/SQLite ingest; CSV/Parquet ingest is unaffected. Mitigated by preinstalling these extensions into the production container image rather than relying on this runtime fetch — see [[risk_log]] R-017 |
 
 Chosen as a transactional-only email API (e.g., Resend or Postmark-class provider) rather than a general marketing-email platform, matching the product's existing bias toward focused, single-purpose vendors (see Fly.io/Neon/R2 above) over a heavier platform that brings capability the product doesn't use.
 
@@ -143,6 +145,8 @@ No live connections to user production databases are made — file-based OLTP (S
 ### Regions
 
 Single-region to start, chosen to co-locate the Fly.io Machines, Neon Postgres, and Cloudflare R2 bucket for lowest latency between the engine and its object storage. Multi-region is not required at current scale and is not part of the near-term plan — see [[README]]'s pre-revenue cost discipline.
+
+The production container image must preinstall the DuckDB `excel` and `sqlite_scanner` extensions at build time rather than relying on the runtime `INSTALL` fetch from `extensions.duckdb.org` that works in local development — a locked-down production network with no egress to that host would otherwise fail the *first* Excel or SQLite upload with no prior warning. See [[risk_log]] R-017.
 
 ### Scaling Strategy
 
