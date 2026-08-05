@@ -9,7 +9,7 @@
 ### Layout
 
 **Mobile layout:**
-- Centered `Card` containing: logo, form (email, password), primary Submit `Button`, secondary link toggling between Sign Up and Login, "Forgot password?" `Link`
+- Centered `Card` containing: logo, form (email, password, and — Sign Up mode only — an optional display name), primary Submit `Button`, secondary link toggling between Sign Up and Login, "Forgot password?" `Link` (Login mode only, routes to [[18-forgot-password|Forgot Password]])
 - Full-width form fields, safe-area padding
 
 **Web layout:**
@@ -22,13 +22,14 @@
 |---|---|---|---|---|
 | Email input | TextInput | Both | Account identifier | User input |
 | Password input | TextInput (masked) | Both | Credential | User input |
+| Display name input | TextInput | Both | Optional; shown only in Sign Up mode. Shown in workspace member lists and audit entries per [[schema]] | User input |
 | Submit button | Button (Primary) | Both | Triggers auth | — |
 | Mode toggle | Link | Both | Switch between Sign Up / Login | — |
-| Forgot password | Link | Both | Routes to password reset flow | — |
+| Forgot password | Link | Both (Login mode only) | Routes to [[18-forgot-password\|Forgot Password]] | — |
 
 ### Data Requirements
 
-**Data Needed:** None on load. On submit: email, password → POST to auth endpoint.
+**Data Needed:** None on load. On submit (Sign Up): email, password, display_name (optional) → POST to account-creation endpoint; if display_name is left blank, the server derives it from the email's local-part per [[schema]]'s `User.display_name`. On submit (Login): email, password → POST to auth endpoint.
 
 **Data Flow:**
 1. User fills form, taps Submit.
@@ -50,3 +51,4 @@
 - Rapid double-tap on Submit → button disabled immediately after first tap to prevent duplicate requests.
 - Deep link into a protected route while unauthenticated → redirected here per the Authentication Gate; on success, redirected back to the originally requested route, not always to [[03-workspace-list|Workspace List]].
 - Password field visibility toggle (show/hide) available on both platforms.
+- Sign Up submitted with display name left blank → account is still created; `display_name` is derived from the email's local-part server-side, per [[schema]]. No error or extra prompt is shown for leaving it blank.

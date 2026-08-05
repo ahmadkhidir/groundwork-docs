@@ -1,11 +1,11 @@
 # Schema
 
-**Last Updated:** 2026-08-04
+**Last Updated:** 2026-08-05
 **Source:** [[screens]] (per-screen Data Requirements), [[features]], [[architecture]], [[monetization]], [[user_flow]]
 
 ## Overview
 
-This is Groundwork's data model, expressed as JSON Schema 2020-12 entities. It follows the storage split established in [[architecture]]: every entity here lives in the application database (Neon Postgres) as durable, queryable state — accounts, workspaces, the semantic layer, orchestration state, reports, sharing, notifications, the audit/egress log, usage, and deletion records. Raw ingested data itself is **not** modeled here as a schema entity — it lives as normalized Parquet in object storage (R2), referenced by `Dataset.parquet_location`, with the disposable session DuckDB engine as a compute layer over it, never a system of record.
+This is Groundwork's data model, expressed as JSON Schema 2020-12 entities. It follows the storage split established in [[architecture]]: every entity here lives in the application database (Neon Postgres) as durable, queryable state — accounts, password reset tokens, workspaces, the semantic layer, orchestration state, reports, sharing, notifications, the audit/egress log, usage, and deletion records. Raw ingested data itself is **not** modeled here as a schema entity — it lives as normalized Parquet in object storage (R2), referenced by `Dataset.parquet_location`, with the disposable session DuckDB engine as a compute layer over it, never a system of record.
 
 Two design choices apply throughout:
 - **Every relationship between entities uses `$ref`** — a `*_id` property plus a documented relationship in the Relationships section below, never an inlined copy of another entity's fields.
@@ -26,7 +26,7 @@ Two design choices apply throughout:
   "properties": {
     "id": { "type": "string", "description": "Unique identifier for the user." },
     "email": { "type": "string", "description": "The user's email address, used for authentication and notifications." },
-    "display_name": { "type": "string", "description": "The user's display name shown in workspace member lists and audit entries." },
+    "display_name": { "type": "string", "description": "The user's display name shown in workspace member lists (per [[features]] FEAT-045) and audit entries. Collected as an optional field on [[screens/02-sign-up-login|Sign Up]]; if left blank, defaults to the local-part of the user's email (e.g., 'chidinma' from 'chidinma@example.com') at account creation. Optional rather than required at signup because it is only ever seen by others once a workspace is shared (FEAT-045) or a report is exported with a viewer attached — not a decision either persona should be forced to make before their first upload." },
     "tier": { "type": "string", "enum": ["free", "pro", "team"], "description": "The user's current subscription tier, per [[monetization]]. Determines feature gating (export formats, sharing, usage detail) across the product." },
     "created_at": { "type": "string", "format": "date-time", "description": "When the account was created." }
   },
@@ -388,17 +388,17 @@ Two design choices apply throughout:
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://groundwork.app/schema/audit-log-entry.schema.json",
   "title": "AuditLogEntry",
-  "description": "A single entry in the combined audit and model-egress log, per [[features]] FEAT-042. The source spec is explicit this is one object, not two — it records queries, model payloads, exports, and deletions in one place.",
+  "description": "A single entry in the combined audit and model-egress log, per [[features]] FEAT-042. The source spec is explicit this is one object, not two — it records queries, model payloads, exports, deletions, and logins in one place. Most action types are workspace-scoped; `login` is account-scoped and carries no workspace, per `workspace_id` below and the Relationships note.",
   "type": "object",
   "properties": {
     "id": { "type": "string", "description": "Unique identifier for the audit log entry." },
-    "workspace_id": { "type": "string", "description": "References the Workspace this action occurred within." },
+    "workspace_id": { "type": "string", "description": "References the Workspace this action occurred within. Empty string for account-scoped entries — currently only `action_type: \"login\"`, since authentication happens before any workspace is selected and a login is never assigned a placeholder workspace to satisfy this field." },
     "user_id": { "type": "string", "description": "References the User who performed the action." },
-    "action_type": { "type": "string", "enum": ["query_executed", "model_call", "export", "deletion", "login"], "description": "The category of action this entry records." },
+    "action_type": { "type": "string", "enum": ["query_executed", "model_call", "export", "deletion", "login"], "description": "The category of action this entry records. `query_executed`, `model_call`, `export`, and `deletion` are workspace-scoped (`workspace_id` set). `login` is account-scoped (`workspace_id` empty)." },
     "payload_sent_to_model": { "type": "string", "description": "JSON-encoded payload sent to the model provider, if action_type is model_call. Empty string for action types that don't involve a model call." },
     "timestamp": { "type": "string", "format": "date-time", "description": "When the action occurred." }
   },
-  "required": ["id", "workspace_id", "user_id", "action_type", "timestamp"]
+  "required": ["id", "user_id", "action_type", "timestamp"]
 }
 ```
 
@@ -448,6 +448,27 @@ Two design choices apply throughout:
 }
 ```
 
+### PasswordResetToken
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://groundwork.app/schema/password-reset-token.schema.json",
+  "title": "PasswordResetToken",
+  "description": "A durable, single-use password reset token per [[features]] FEAT-001, requested on [[screens/18-forgot-password|Forgot Password]] and consumed on [[screens/19-reset-password|Reset Password]]. Persisted here (rather than held in process memory) so a reset link keeps working across a restart or across multiple running instances, per [[architecture]].",
+  "type": "object",
+  "properties": {
+    "id": { "type": "string", "description": "Unique identifier for the reset token record." },
+    "user_id": { "type": "string", "description": "References the User this reset token was issued for." },
+    "token_hash": { "type": "string", "description": "A one-way hash of the reset token. The raw token is included only in the delivered email link and is never itself persisted." },
+    "expires_at": { "type": "string", "format": "date-time", "description": "When this token expires — 30 minutes after issuance." },
+    "consumed_at": { "type": "string", "format": "date-time", "description": "When this token was used to complete a password reset. Empty string if not yet consumed. A consumed token cannot be used again." },
+    "created_at": { "type": "string", "format": "date-time", "description": "When the reset token was issued." }
+  },
+  "required": ["id", "user_id", "token_hash", "expires_at", "created_at"]
+}
+```
+
 ## Relationships
 
 - **Workspace** `owner_id` references **User** — each workspace has exactly one owner.
@@ -464,6 +485,7 @@ Two design choices apply throughout:
 - **ProvenanceLink** `report_id` references **Report** — each provenance link belongs to exactly one report.
 - **ReportShare** `report_id` references **Report** — each share link grants read-only access to exactly one report.
 - **Notification** `user_id` references **User**; `related_entity_id` references a **Report**, **Workspace**, or **Dataset** depending on `related_entity_type` — a polymorphic reference resolved by type at read time.
-- **AuditLogEntry** `workspace_id` references **Workspace**, and `user_id` references **User** — every audit/egress entry is scoped to both the workspace it occurred in and the user who performed the action.
+- **AuditLogEntry** `workspace_id` references **Workspace**, and `user_id` references **User**. `query_executed`, `model_call`, `export`, and `deletion` entries are scoped to both the workspace they occurred in and the acting user. `login` entries are account-scoped: `workspace_id` is an empty string, since authentication happens before any workspace is in context, consistent with this schema's existing empty-string-means-absent convention (e.g., `Run.parent_run_id`). [[screens/17-egress-audit-log|Egress / Audit Log]] is a per-workspace screen; it additionally surfaces the current user's own account-scoped `login` entries alongside that workspace's entries, labeled by scope, rather than omitting them or inventing a workspace for them.
+- **PasswordResetToken** `user_id` references **User** — a token is single-use (`consumed_at`) and time-bound (`expires_at`). Requesting a reset never reveals whether the referenced email matches an account; a token is only ever created when it does.
 - **UsageRecord** `workspace_id` references **Workspace** — usage is always measured per workspace, per [[architecture]] and [[monetization]].
 - **DeletionRecord** `workspace_id` references the id of a now-deleted **Workspace**, and `initiated_by` references **User** — this is the sole surviving record of a workspace after its deletion cascade completes, retained specifically to make deletion provable per [[features]] FEAT-043.

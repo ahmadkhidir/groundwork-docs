@@ -1,6 +1,6 @@
 # Screens
 
-**Last Updated:** 2026-08-04
+**Last Updated:** 2026-08-05
 **Source:** [[README]], [[user_personas]], [[features]], [[branding]], [[user_flow]]
 
 **Experience Tier:** `Standard` *(restated from [[branding]] — no Creative Direction/Motion Design/Asset Style Guide sections apply to any screen in this product)*
@@ -27,6 +27,8 @@
 | 15 | Semantic Layer / Corrections | [[screens/15-semantic-layer\|15-semantic-layer]] | `/workspaces/:id/semantic-layer` | Both (desktop-optimized) | FEAT-019, FEAT-020 |
 | 16 | Notifications | [[screens/16-notifications\|16-notifications]] | `/notifications` | Both | FEAT-026 |
 | 17 | Egress / Audit Log | [[screens/17-egress-audit-log\|17-egress-audit-log]] | `/workspaces/:id/audit-log` | Both (desktop-optimized) | FEAT-042, FEAT-044 |
+| 18 | Forgot Password | [[screens/18-forgot-password\|18-forgot-password]] | `/forgot-password` | Both | FEAT-001 |
+| 19 | Reset Password | [[screens/19-reset-password\|19-reset-password]] | `/reset-password` | Both | FEAT-001 |
 
 ## Navigation Map
 
@@ -36,6 +38,10 @@ graph TD
     Auth --> WSList[Workspace List]
     WSList -->|Create| WSHome[Workspace Home]
     WSList -->|Open existing| WSHome
+
+    Auth -->|Forgot password?| Forgot[Forgot Password]
+    Forgot -.->|Emailed link| Reset[Reset Password]
+    Reset --> Auth
 
     WSHome -->|Upload| Upload[File Upload]
     Upload --> IngestProgress[Ingest Progress]

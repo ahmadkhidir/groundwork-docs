@@ -1,6 +1,6 @@
 # Architecture
 
-**Last Updated:** 2026-08-04
+**Last Updated:** 2026-08-05
 **Source:** [[README]], [[branding]], [[features]]
 
 ## Architecture Overview
@@ -27,12 +27,13 @@ Groundwork is a single Go backend service (the only backend — see the Boundary
 ### Component: Go API Service
 
 **Responsibility:** The single backend. Owns the HTTP/streaming API, user and workspace management, the durable orchestration engine, all engine (DuckDB) access, and all outbound calls to the AI provider.
-**Provides:** Account/workspace endpoints, file ingest handling, the run/step orchestration API, live run event streams, report read/export endpoints, the audit/egress log, and workspace deletion.
-**Consumes:** Neon Postgres (all durable state), Cloudflare R2 (object storage), the Engine Provider component (DuckDB access), the Anthropic API (model calls).
+**Provides:** Account/workspace endpoints, file ingest handling, the run/step orchestration API, live run event streams, report read/export endpoints, the audit/egress log, workspace deletion, and password reset token issuance ([[features]] FEAT-001).
+**Consumes:** Neon Postgres (all durable state), Cloudflare R2 (object storage), the Engine Provider component (DuckDB access), the Anthropic API (model calls), a Transactional Email Provider (password reset link delivery).
 **Platform Notes:**
 - Chosen for process supervision, long-running jobs, streaming events, concurrent runs, and cancellation — these map naturally onto Go's concurrency and context-cancellation primitives, which is the actual hard part of the interruptible pipeline (see [[features]] FEAT-022–024).
 - The DuckDB driver is the official `duckdb/duckdb-go` (cgo-based). Builds require `CGO_ENABLED=1` and a C compiler; fully static binaries are not available. This is an accepted, documented constraint, not an oversight — see [[risk_log]] (R-010).
 - Uses the official Anthropic Go SDK for all model calls — no second language is introduced for the AI layer.
+- Password reset requests always create a `PasswordResetToken` row (per [[schema]]) and return an identical response whether or not the submitted email matches an account — the service never branches its response on account existence. Tokens are single-use and expire 30 minutes after issuance; delivery is a fire-and-forget request to the Transactional Email Provider rather than a step the reset-request flow blocks on.
 
 ### Component: Durable Orchestration Engine (in Go API Service, backed by Postgres)
 
@@ -123,6 +124,9 @@ Groundwork is a single Go backend service (the only backend — see the Boundary
 | Cloudflare R2 | Canonical Parquet storage and optional `.duckdb` snapshot storage | Outbound (S3-compatible API, `httpfs` from DuckDB) | High — the system of record for all ingested data |
 | Neon (Postgres) | App database and durable orchestration state | Outbound (standard Postgres protocol) | High — the system of record for everything that isn't raw data |
 | Authentication provider | User sign-in/session handling | Inbound (auth callback) / session validation | High — gates all access to workspace data |
+| Transactional Email Provider | Delivers password reset links ([[features]] FEAT-001); the only outbound email the product sends today | Outbound (API calls, from the Go API Service) | Medium — account recovery is blocked without it, but no other flow depends on it |
+
+Chosen as a transactional-only email API (e.g., Resend or Postmark-class provider) rather than a general marketing-email platform, matching the product's existing bias toward focused, single-purpose vendors (see Fly.io/Neon/R2 above) over a heavier platform that brings capability the product doesn't use.
 
 No live connections to user production databases are made — file-based OLTP (SQLite and similar) is ingested as an uploaded file through the same Ingest & Profiling Pipeline as CSV/Excel/Parquet, not through a separate integration, per [[README]]'s explicit non-goal on live OLTP connectivity.
 
@@ -153,6 +157,8 @@ Primarily scale-to-zero, not horizontal auto-scaling, because the dominant cost 
 ## Cross-Cutting Concerns
 
 **Authentication & Authorization:** Standard account-based authentication (see [[features]] FEAT-001), handled at the Next.js layer for session management and enforced on every request by the Go API Service. Authorization is workspace-scoped: a user (or an invited read-only member, per [[features]] FEAT-045) can only access workspaces they own or have been explicitly granted access to. Read-only collaborators are enforced at the API layer, not just hidden in the UI — a read-only session cannot mutate the semantic layer or trigger new runs regardless of what the client sends.
+
+Password reset (per [[features]] FEAT-001, screens [[screens/18-forgot-password|Forgot Password]] and [[screens/19-reset-password|Reset Password]]) is deliberately account-scoped, not workspace-scoped — it happens before any workspace is in context. Reset tokens are persisted as `PasswordResetToken` rows in Neon Postgres (per [[schema]]), not held in process memory, so a reset link keeps working across a restart or across multiple running instances of the Go API Service. Two security properties hold regardless of implementation details: the reset-request response never reveals whether the submitted email matches an account, and a token is single-use and time-bound (30-minute expiry), enforced server-side at consumption time.
 
 **Error Handling:** Distinguishes run failures from workspace failures deliberately — a failed run (e.g., a transient engine loss mid-execution) surfaces a retry affordance scoped to that run, while the user's workspace, data, and existing reports remain visibly untouched. Snapshot-open failures fall back to Parquet views automatically and silently rather than surfacing an error. Transient infrastructure failures (e.g., a Fly Machine failing to start) are retried transparently before ever reaching the user, relying on the idempotent step design in the Durable Orchestration Engine.
 
