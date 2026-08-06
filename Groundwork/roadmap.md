@@ -38,6 +38,7 @@ gantt
 - Users review and confirm inferred types, flagged sensitive columns, and suggested relationships between files before anything is queried
 - Users see, before they upload anything, a plain-language explanation of what happens to their data and what may reach the AI model
 - Users can trust that deleting a workspace genuinely deletes everything, with proof
+- Re-uploading a file that shares a name with one already in the workspace never silently multiplies data — the user is asked to replace or explicitly keep both, and can delete a single dataset outright
 
 **Features Delivered:**
 
@@ -55,6 +56,8 @@ gantt
 | FEAT-011 | Engine Sleep/Wake Lifecycle & Honest Status | Keeps costs low while always telling the user honestly what's happening, never leaving them guessing |
 | FEAT-042 | Visible Model-Egress / Audit Log | Makes the platform's privacy claims something a user can verify, not just trust |
 | FEAT-044 | Zero-Retention Provider Terms Notice | Tells users plainly, before they upload, what happens to their data |
+| FEAT-048 | Single-Dataset Deletion | Reopened into Phase 1 after a real incident showed there was no way to remove a single bad or duplicated dataset short of destroying the whole workspace by hand |
+| FEAT-049 | Duplicate Filename Detection & Resolution at Upload | Stops the exact accumulation pattern that caused that incident from happening again, at the point of upload |
 
 ## Phase 2: Core Grounded Answer Loop
 

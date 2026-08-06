@@ -13,10 +13,10 @@
 | 1 | Landing Page | [[screens/01-landing-page\|01-landing-page]] | `/` | Both | FEAT-001 |
 | 2 | Sign Up / Login | [[screens/02-sign-up-login\|02-sign-up-login]] | `/signup`, `/login` | Both | FEAT-001 |
 | 3 | Workspace List | [[screens/03-workspace-list\|03-workspace-list]] | `/workspaces` | Both | FEAT-002 |
-| 4 | Workspace Home | [[screens/04-workspace-home\|04-workspace-home]] | `/workspaces/:id` | Both | FEAT-011, FEAT-012, FEAT-013, FEAT-034 |
-| 5 | File Upload | [[screens/05-file-upload\|05-file-upload]] | `/workspaces/:id/upload` | Both | FEAT-003 |
+| 4 | Workspace Home | [[screens/04-workspace-home\|04-workspace-home]] | `/workspaces/:id` | Both | FEAT-011, FEAT-012, FEAT-013, FEAT-034, FEAT-048 |
+| 5 | File Upload | [[screens/05-file-upload\|05-file-upload]] | `/workspaces/:id/upload` | Both | FEAT-003, FEAT-049 |
 | 6 | Ingest Progress | [[screens/06-ingest-progress\|06-ingest-progress]] | `/workspaces/:id/ingest/progress` | Both | FEAT-004, FEAT-005 |
-| 7 | Ingest Confirmation | [[screens/07-ingest-confirmation\|07-ingest-confirmation]] | `/workspaces/:id/ingest/confirm` | Both (desktop-optimized) | FEAT-006, FEAT-007, FEAT-008, FEAT-009 |
+| 7 | Ingest Confirmation | [[screens/07-ingest-confirmation\|07-ingest-confirmation]] | `/workspaces/:id/ingest/confirm` | Both (desktop-optimized) | FEAT-006, FEAT-007, FEAT-008, FEAT-009, FEAT-049 |
 | 8 | Run Viewer | [[screens/08-run-viewer\|08-run-viewer]] | `/workspaces/:id/runs/:runId` | Both (SQL editing desktop-only) | FEAT-018, FEAT-022, FEAT-023, FEAT-024, FEAT-027, FEAT-028 |
 | 9 | Report View | [[screens/09-report-view\|09-report-view]] | `/workspaces/:id/reports/:reportId` | Both | FEAT-015, FEAT-016, FEAT-017, FEAT-029, FEAT-030, FEAT-034, FEAT-041 |
 | 10 | Provenance Panel | [[screens/10-provenance-panel\|10-provenance-panel]] | Drawer on Report View (`?claim=:claimId`) | Both | FEAT-030 |
@@ -104,8 +104,8 @@ Used on: all screens with data fetching
 - Centered icon (`error` token color), `h3` title "Something went wrong," `body-small` description, primary "Try Again" button (retries the failed request), optional Ghost "Go Back"
 
 ### Delete Confirmation Modal
-Used on: [[screens/13-workspace-settings|Workspace Settings]] (workspace deletion), any future destructive action
-- `Modal` with explicit scope of what will be destroyed spelled out in the body (never a bare "Are you sure?")
+Used on: [[screens/13-workspace-settings|Workspace Settings]] (workspace deletion), [[screens/04-workspace-home|Workspace Home]] (single-dataset deletion, FEAT-048), [[screens/05-file-upload|File Upload]] (duplicate-filename "Replace" choice, FEAT-049 — reuses this pattern since Replace deletes the prior dataset), any future destructive action
+- `Modal` with explicit scope of what will be destroyed spelled out in the body (never a bare "Are you sure?") — for single-dataset deletion (FEAT-048) and Replace (FEAT-049), this includes naming any dependent `Relationship`/`MetricDefinition` **and**, separately, any type override or reviewed PII decision recorded on the dataset's own columns that will be lost and not carried forward
 - Buttons: Ghost "Cancel" and Destructive "Delete" (per [[branding]] Buttons component tokens)
 
 ### Navigation Shell
