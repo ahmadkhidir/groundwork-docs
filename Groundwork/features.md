@@ -305,12 +305,12 @@ This is the first feature to construct any payload sent to the model, which make
 As any user, I want the generated SQL to actually run against my data and return real results, so that every answer is grounded in what's actually in my files.
 
 **Description:**
-The engine executes the generated SQL and returns facts (rows, aggregates) that [[#FEAT-015 Narrative Generation|FEAT-015]] and [[#FEAT-016 Chart Spec Generation|FEAT-016]] consume.
+The engine executes the generated SQL and returns facts (rows, aggregates) that [[#FEAT-015 Narrative Generation|FEAT-015]] and [[#FEAT-016 Chart Spec Generation|FEAT-016]] consume. A single query's result set is capped at **10,000 rows** (`config.MaxExecuteRows`); a query whose result set would exceed the cap fails the run honestly rather than truncating silently. This result-set ceiling is separate from the 500 MB upload-size ceiling and the 50M-row ingestion scale pitched on the landing page and in [[README]].
 
 **Acceptance Criteria:**
 - [ ] Generated SQL executes against the session engine and returns a result set
 - [ ] Execution errors (e.g., malformed SQL) are caught and surfaced without crashing the run
-- [ ] Query execution scales to the product's stated row-count ceiling without failing
+- [ ] Query execution scales to the product's stated row-count ceiling of 10,000 rows per result set without failing — a result set exceeding the cap fails the run fail-closed rather than silently truncating
 
 ### FEAT-015: Narrative Generation
 
@@ -407,11 +407,11 @@ Rows in the application database — relationships, grain, metric definitions, b
 As Chidinma, I want a correction I make to a join or a metric definition to stick, so that I never have to fix the same mistake twice.
 
 **Description:**
-When a user edits generated SQL or a semantic-layer definition, that correction is captured as a durable preference rather than a one-off edit.
+When a user edits generated SQL or a semantic-layer definition, that correction is captured as a durable preference rather than a one-off edit. The shipped capture stores each edited-SQL correction and includes accumulated corrections in the grounding context assembled for subsequent questions (consumed by [[#FEAT-013 Natural-Language Question → SQL Generation|FEAT-013]]'s payload builder) — it does not yet actively re-apply rules.
 
 **Acceptance Criteria:**
-- [ ] Editing the same join or filter logic twice in a workspace results in the system applying the corrected version by default on the third occurrence
-- [ ] Corrections are attributable to a specific semantic-layer entry, not buried in unstructured history
+- [ ] Each edited-SQL correction is captured durably and included in the accumulated-corrections grounding context of subsequent questions, so future planning is informed by it. The stronger behavior — editing the same join/filter logic twice and the system applying the corrected version by default on the third occurrence, via an applied-rule re-application engine — is NOT yet served and is deferred: no such engine exists, only grounding-inclusion ships
+- [ ] Each correction is attributable to the run that captured it (the run created when the user ran the edited SQL), not buried in unstructured history — attribution to a specific semantic-layer entry is deferred, since the run-create request carries no source-run or semantic-layer-entry reference (see [[schema]] `Correction`)
 - [ ] User can view and remove a stored correction
 
 ### FEAT-021: Compositional Follow-Up Questions

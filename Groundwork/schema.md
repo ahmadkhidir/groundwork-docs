@@ -218,12 +218,12 @@ Two design choices apply throughout:
     "id": { "type": "string", "description": "Unique identifier for the correction." },
     "workspace_id": { "type": "string", "description": "References the Workspace this correction applies to." },
     "description": { "type": "string", "description": "Plain-language summary of what was corrected (e.g., 'refunds join now excludes cancelled orders')." },
-    "original_logic": { "type": "string", "description": "The original SQL or logic before correction." },
+    "original_logic": { "type": "string", "description": "The original SQL or logic before correction. Not required: the run-create request for an edited SQL (FEAT-018's run-edited-query flow) carries only `question_text` and the user's edited `sql` — no previously generated SQL — so this is empty string by design rather than a fabricated 'original' that would corrupt the original-vs.-corrected comparison on [[screens/15-semantic-layer|Semantic Layer / Corrections]]. Empty when the prior generation was not threaded through." },
     "corrected_logic": { "type": "string", "description": "The corrected SQL or logic, now used going forward." },
-    "originating_run_id": { "type": "string", "description": "References the Run during which this correction was made." },
+    "originating_run_id": { "type": "string", "description": "References the Run that captured this correction — the run created when the user ran the edited SQL, since the run-create request carries no source/parent run id and no semantic-layer-entry reference. This is the durable, honest anchor. Attribution to a specific semantic-layer entry (join/metric/Rule) is contract for a future wave, not current behavior." },
     "created_at": { "type": "string", "format": "date-time", "description": "When the correction was made." }
   },
-  "required": ["id", "workspace_id", "description", "original_logic", "corrected_logic", "originating_run_id", "created_at"]
+  "required": ["id", "workspace_id", "description", "corrected_logic", "originating_run_id", "created_at"]
 }
 ```
 

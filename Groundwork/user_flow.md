@@ -145,7 +145,7 @@ graph TD
 7. She edits the SQL directly in the SQL panel to fix the join condition.
 8. She resumes the run from `static_check` forward — steps before her edit are not re-run.
 9. The Report View shows the corrected answer.
-10. The correction is captured as a persistent semantic-layer preference (FEAT-019, FEAT-020) — the next time this join pattern would apply, the corrected version is used by default.
+10. The correction is captured durably and fed into subsequent grounding context (FEAT-019, FEAT-020), so future planning is informed by it. It is not yet actively re-applied by a rule engine — the "corrected version used by default on the third occurrence" behavior is deferred, not shipped (see FEAT-020 AC1).
 11. She asks a follow-up question referencing the report she just got ("break this down by month").
 12. The system generates a new, linked report using the same fork-on-amendment mechanism, with the original report and run left fully intact (FEAT-021, FEAT-025).
 
