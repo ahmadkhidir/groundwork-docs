@@ -1,6 +1,6 @@
 # Schema
 
-**Last Updated:** 2026-08-05
+**Last Updated:** 2026-08-06
 **Source:** [[screens]] (per-screen Data Requirements), [[features]], [[architecture]], [[monetization]], [[user_flow]]
 
 ## Overview
@@ -9,7 +9,7 @@ This is Groundwork's data model, expressed as JSON Schema 2020-12 entities. It f
 
 Two design choices apply throughout:
 - **Every relationship between entities uses `$ref`** — a `*_id` property plus a documented relationship in the Relationships section below, never an inlined copy of another entity's fields.
-- **`ChartSpec` and `ReconciliationSummary` are inlined as value objects inside `Report`.** Neither has independent identity, is queried on its own, or is referenced from any entity other than `Report` — they exist only as structured detail attached to one report, which is exactly the exception the flat-object rule allows.
+- **`ChartSpec` and `ReconciliationSummary` are inlined as value objects inside `Report`, and `type_fit_rates` is inlined inside `Column`.** None of the three has independent identity, is queried on its own, or is referenced from any entity other than its parent — each exists only as structured detail attached to one row, which is exactly the exception the flat-object rule allows. `type_fit_rates`'s six properties are fixed by the `inferred_type` enum, not an open-ended map, so it doesn't reintroduce the union problem `Step.input`/`Step.output` avoid by staying string-typed.
 - **`Step.input` and `Step.output`** are modeled as JSON-encoded strings rather than typed objects. Per [[architecture]], step payload shape genuinely varies by `step_name` (a `generate_sql` step's output is SQL text; a `reconcile` step's output is row counts; an `adversarial_review` step's output is a verdict) — typing this as one flat object would either be dishonestly narrow or require a union the flat-object rule doesn't support. The string is a deliberate, documented boundary, not an oversight; per-`step_name` payload shapes are an implementation concern for the `Implementor` agent to type per step, not a schema entity.
 
 ## Entity Definitions
@@ -113,7 +113,20 @@ Two design choices apply throughout:
     "dataset_id": { "type": "string", "description": "References the Dataset this column belongs to." },
     "name": { "type": "string", "description": "Column name as it appears in the dataset." },
     "inferred_type": { "type": "string", "enum": ["string", "integer", "number", "boolean", "date", "timestamp"], "description": "The type inferred at ingest, reviewable and overridable by the user per [[features]] FEAT-006." },
-    "type_confidence": { "type": "number", "description": "Confidence score (0-1) for the inferred type, presented to the user via the HIGH (≥0.85) / MEDIUM (0.6-0.84) / LOW (<0.6) bands specified in [[features]] FEAT-005. Measures type-inference agreement across sampled non-null values (coercion success rate for boolean/date/timestamp/integer/number; for string, the fraction not also matching a stricter, rejected type pattern), weakened by null rate — per [[features]] FEAT-005's specified heuristic. The bands and what they measure are the specified contract; sample size, exact coercion rules, and the floor value are implementation-defined." },
+    "type_fit_rates": {
+      "type": "object",
+      "description": "A fit rate (0-1) for every candidate type, computed once during profiling as additional FILTER clauses in the same combined aggregate query profiling already runs — not a per-type extra round trip, per [[features]] FEAT-005. For boolean/date/timestamp/integer/number, the fraction of sampled non-null values that coerce to that type without loss. For string (the fallback type), the fraction of sampled non-null values that do not also match a stricter type pattern tested and rejected. Each rate is weakened by the column's null rate, with a floor. This is the durable source of truth `type_confidence` reads from; it is computed once and never recomputed when the user changes the override, per [[features]] FEAT-005's cost note.",
+      "properties": {
+        "string": { "type": "number", "description": "Fit rate (0-1) if this column's active type were `string`." },
+        "integer": { "type": "number", "description": "Fit rate (0-1) if this column's active type were `integer`." },
+        "number": { "type": "number", "description": "Fit rate (0-1) if this column's active type were `number`." },
+        "boolean": { "type": "number", "description": "Fit rate (0-1) if this column's active type were `boolean`." },
+        "date": { "type": "number", "description": "Fit rate (0-1) if this column's active type were `date`." },
+        "timestamp": { "type": "number", "description": "Fit rate (0-1) if this column's active type were `timestamp`." }
+      },
+      "required": ["string", "integer", "number", "boolean", "date", "timestamp"]
+    },
+    "type_confidence": { "type": "number", "description": "The fit rate (0-1) for this column's currently ACTIVE type — `inferred_type` unless the user has set an override, in which case the override — presented to the user via the HIGH (≥0.85) / MEDIUM (0.6-0.84) / LOW (<0.6) bands specified in [[features]] FEAT-005, labeled 'N% of values fit this type.' Not an independently stored value: it is a read-time lookup into `type_fit_rates` keyed by whichever type is currently active, so it always describes the type actually shown next to it and updates instantly (no recomputation, no engine wake) when the user changes the override. The bands, the label, and 'always describes the currently active type' are the specified contract; sample size, exact coercion rules, and the floor value used to compute `type_fit_rates` are implementation-defined." },
     "pii_flag": { "type": "boolean", "description": "Whether this column was automatically flagged as likely containing sensitive personal data at ingest, per [[features]] FEAT-007." },
     "pii_pattern": { "type": "string", "description": "The detected pattern type if pii_flag is true (e.g., 'email', 'national_id', 'card_number', 'name'). Empty string if not flagged." },
     "pii_reviewed_at": { "type": "string", "format": "date-time", "description": "When a user last made an explicit reviewed decision about this column's pii_flag — clearing it, or explicitly confirming it as correct — during ingest confirmation or later in [[screens/13-workspace-settings|Workspace Settings]], per [[features]] FEAT-007. Empty string if no user has ever explicitly reviewed this column's flag, which is what distinguishes a reviewed-and-cleared column from one that was simply never flagged. Written by FEAT-007's override action, alongside a corresponding `pii_override` [[#AuditLogEntry|AuditLogEntry]]." },
@@ -121,7 +134,7 @@ Two design choices apply throughout:
     "null_rate": { "type": "number", "description": "Fraction (0-1) of values in this column that are null, from profiling." },
     "distinct_count": { "type": "integer", "description": "Number of distinct values in this column, from profiling." }
   },
-  "required": ["id", "dataset_id", "name", "inferred_type", "type_confidence", "pii_flag", "excluded_from_model", "null_rate", "distinct_count"]
+  "required": ["id", "dataset_id", "name", "inferred_type", "type_fit_rates", "type_confidence", "pii_flag", "excluded_from_model", "null_rate", "distinct_count"]
 }
 ```
 
