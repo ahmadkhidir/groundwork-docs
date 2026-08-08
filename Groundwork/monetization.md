@@ -1,6 +1,6 @@
 # Monetization
 
-**Last Updated:** 2026-08-04
+**Last Updated:** 2026-08-08
 **Source:** [[README]], [[user_personas]], [[features]], [[architecture]]
 
 ## Revenue Model
@@ -11,6 +11,8 @@
 Groundwork's real infrastructure cost is genuinely usage-variable per [[architecture]] — engine-seconds on Fly.io, object-store bytes on R2, and model tokens via the Anthropic API are metered per workspace from day one regardless of billing ([[features]] FEAT-047). A flat seat-based price would either overcharge a light Tunde-style user or undercharge a heavy Chidinma/Ngozi-style user running large multi-file joins. Instead, each tier includes a fixed monthly price plus an included usage allotment (workspaces, questions/runs per month, engine-minutes, storage, model tokens); usage beyond the included allotment is billed at cost-plus-margin rates. The free tier exists to let a price-sensitive small-business user like Tunde experience the full core loop at real but low volume, not as a crippled trial.
 
 **Design decision — trust and verification are never paywalled.** Every verification layer ([[features]] FEAT-027 through FEAT-033, including claim-level provenance FEAT-030) and every privacy/governance feature (PII flagging FEAT-007, ingest join confirmation FEAT-009, the egress/audit log FEAT-042, the deletion cascade FEAT-043, the zero-retention notice FEAT-044) is available identically on every tier, including Free. [[README]]'s core positioning is that Groundwork is verifiably honest rather than merely trusted — gating the mechanisms that make that claim checkable would directly contradict the product's differentiator and turn "you can verify this" into "you can verify this if you pay." What tiers gate instead is *usage volume* and *convenience/collaboration features* layered on top of a trust floor that is the same for everyone.
+
+**Design decision — discoverability is never paywalled either.** Question suggestions ([[features]] FEAT-050) are on every tier: they cost nothing to produce (deterministic, no model call, no engine), and gating the exact feature that de-risks a Tunde-style Free user's first session would contradict the Free tier's stated purpose as a real, uncrippled experience. The runs a suggestion triggers are metered like any other question, so usage volume is still gated per tier.
 
 ## Pricing Tiers
 
@@ -128,6 +130,7 @@ Verification, trust, and privacy features are marked **Yes** on every tier delib
 | FEAT-045 | Read-Only Workspace Sharing | No | No | Yes |
 | FEAT-046 | Read-Only Report Sharing by ID | No | Yes | Yes |
 | FEAT-047 | User-Facing Usage View | Basic (totals only) | Detailed breakdown | Detailed breakdown |
+| FEAT-050 | Question Suggestions | Yes | Yes | Yes |
 
 ## Payment & Billing
 

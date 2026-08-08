@@ -1,6 +1,6 @@
 # User Flow
 
-**Last Updated:** 2026-08-04
+**Last Updated:** 2026-08-08
 **Source:** [[README]], [[user_personas]], [[features]], [[architecture]], [[branding]]
 
 Screen names introduced in this document are canonical — [[screens]] formalizes them rather than renaming them.
@@ -91,6 +91,9 @@ graph TD
 **Alternate Path D — Ingest Failure:**
 - At step 5, if ingest fails after upload succeeds (e.g., a malformed row, unsupported encoding), an Ingest Error state names the specific reason. User returns to File Upload to correct and re-upload; no partial workspace state is left in an ambiguous condition.
 
+**Alternate Path E — Start from a Suggested Question:**
+- At step 8, if the user doesn't know what to ask, the question suggestions strip on Workspace Home ([[features]] FEAT-050) offers 5–10 suggested questions generated from the workspace's datasets and semantic layer. Clicking one fills the Ask input with its text; the user can edit it or submit as-is, and the flow continues from step 9 exactly as if the question had been typed. The strip is served from Postgres alone, so it is available immediately on a `sleeping` workspace without waking the engine.
+
 ### States Referenced
 
 | Screen | States |
@@ -99,7 +102,7 @@ graph TD
 | File Upload | Default, Uploading, Upload Error |
 | Ingest Progress | Provisioning, Profiling, Ingest Error |
 | Ingest Confirmation | Default (review), Skipped-with-defaults |
-| Workspace Home | Engine `sleeping`/`waking`/`ready`, Ask panel focused |
+| Workspace Home | Engine `sleeping`/`waking`/`ready`, Ask panel focused, Question suggestions strip (visible/empty) |
 | Run Viewer | Live step events, Waking, Clarifying Question |
 | Report View | Loaded, Reconciliation Notice shown, Provenance Panel open |
 
@@ -251,7 +254,7 @@ graph TD
 **Happy Path:**
 1. User opens a workspace they haven't touched in a few hours or days, from the Workspace List.
 2. Workspace Home shows the engine status honestly as `sleeping` (FEAT-011) — this is never hidden or disguised as a generic loading state.
-3. The user can immediately browse past reports, click into provenance, and review the semantic layer — none of this requires the engine to be running (FEAT-034).
+3. The user can immediately browse past reports, click into provenance, and review the semantic layer — none of this requires the engine to be running (FEAT-034). The question suggestions strip is available here too, generated from Postgres without waking the engine (FEAT-050).
 4. When the user focuses the question input to ask something new, wake-on-intent triggers rehydration in the background (FEAT-012).
 5. Engine status updates to `waking`, visibly, without blocking any part of the UI.
 6. If the user finishes typing and submits a question before the engine is fully ready, the question is queued immediately — never rejected or held on a blocking spinner.

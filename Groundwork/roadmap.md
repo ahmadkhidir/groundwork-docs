@@ -1,6 +1,6 @@
 # Roadmap
 
-**Last Updated:** 2026-08-04
+**Last Updated:** 2026-08-08
 **Source:** [[README]], [[features]]
 
 ## Vision Statement
@@ -68,6 +68,7 @@ gantt
 - The answer is always generated from a real query against the user's data, never invented from a summary
 - Users who want to see and edit the exact logic behind an answer can do so; users who don't, never have to
 - The platform remembers relationships, definitions, and corrections across sessions instead of starting cold every time
+- Users who aren't sure what to ask can start from suggested questions generated from their data, so a first answer never requires understanding the data first
 
 **Features Delivered:**
 
@@ -81,6 +82,7 @@ gantt
 | FEAT-018 | SQL Visibility & Inline Editing | Lets a user who wants control see and correct the exact logic behind any answer |
 | FEAT-019 | Semantic Layer Storage | Stops every session from starting cold by remembering what's already been learned about the data |
 | FEAT-020 | Persistent User Corrections | Makes sure a correction only has to be made once, not repeated every session |
+| FEAT-050 | Question Suggestions | Gives users who don't know what to ask a safe, data-grounded starting point instead of a blank question box |
 
 ## Phase 3: Trust & Observability
 

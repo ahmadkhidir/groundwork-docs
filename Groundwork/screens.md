@@ -1,6 +1,6 @@
 # Screens
 
-**Last Updated:** 2026-08-05
+**Last Updated:** 2026-08-08
 **Source:** [[README]], [[user_personas]], [[features]], [[branding]], [[user_flow]]
 
 **Experience Tier:** `Standard` *(restated from [[branding]] — no Creative Direction/Motion Design/Asset Style Guide sections apply to any screen in this product)*
@@ -13,7 +13,7 @@
 | 1 | Landing Page | [[screens/01-landing-page\|01-landing-page]] | `/` | Both | FEAT-001 |
 | 2 | Sign Up / Login | [[screens/02-sign-up-login\|02-sign-up-login]] | `/signup`, `/login` | Both | FEAT-001 |
 | 3 | Workspace List | [[screens/03-workspace-list\|03-workspace-list]] | `/workspaces` | Both | FEAT-002 |
-| 4 | Workspace Home | [[screens/04-workspace-home\|04-workspace-home]] | `/workspaces/:id` | Both | FEAT-011, FEAT-012, FEAT-013, FEAT-034, FEAT-048 |
+| 4 | Workspace Home | [[screens/04-workspace-home\|04-workspace-home]] | `/workspaces/:id` | Both | FEAT-011, FEAT-012, FEAT-013, FEAT-034, FEAT-048, FEAT-050 |
 | 5 | File Upload | [[screens/05-file-upload\|05-file-upload]] | `/workspaces/:id/upload` | Both | FEAT-003, FEAT-049 |
 | 6 | Ingest Progress | [[screens/06-ingest-progress\|06-ingest-progress]] | `/workspaces/:id/ingest/progress` | Both | FEAT-004, FEAT-005 |
 | 7 | Ingest Confirmation | [[screens/07-ingest-confirmation\|07-ingest-confirmation]] | `/workspaces/:id/ingest/confirm` | Both (desktop-optimized) | FEAT-006, FEAT-007, FEAT-008, FEAT-009, FEAT-049 |
