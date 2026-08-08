@@ -29,6 +29,7 @@
 | Halt control | IconButton | Web only | Pauses the run at the current step | — |
 | Resume from here | Button (Primary) | Web only | Resumes execution from the amended step | — |
 | Reconciliation Notice | Shared component | Both | Surfaces significant row exclusions unprompted | Streamed `reconcile` step output |
+| Execute failure banner | Banner + disclosure | Both | On `execute` step failure: "The generated query couldn't run" + the engine's actual reason (Go wrapper noise stripped), DuckDB's `LINE n:` SQL echo behind an "Engine detail" disclosure, and the recovery path — "Edit the generated SQL and run it, or refine your question" (the FEAT-018 editable-SQL surface in the same view). No "Retry" button — re-running the same invalid SQL deterministically fails again | Streamed `execute` step failure event |
 
 ### Data Requirements
 
@@ -52,10 +53,10 @@
 | **Halted** | User halted a step (web) | Halted step marked, SQL editable, "Resume from here" available |
 | **Reconnecting** | Transient engine loss mid-run | Brief "reconnecting" indicator on the affected step; resumes automatically once the engine is available (per [[architecture]]'s idempotent retry design) |
 | **Clarification Needed** | Question judged ambiguous | [[12-clarifying-question-prompt\|Clarifying Question Prompt]] shown inline, DAG paused before `generate_sql` proceeds |
-| **Failed (retryable)** | A step failed after exhausting automatic retries | That step shows a failed icon + "Retry" affordance scoped to the run; workspace and prior reports remain untouched |
+| **Failed (execute)** | The `execute` step failed — e.g., a DuckDB Binder Error from invalid generated SQL — after any infrastructure-level automatic retries are exhausted | The run fails honestly. A readable banner shows "The generated query couldn't run" with the engine's actual reason (Go wrapper noise stripped; DuckDB's long `LINE n:` SQL echo is collapsed behind an "Engine detail" disclosure in the step feed). The recovery path is shown with the banner: "Edit the generated SQL and run it, or refine your question" — the FEAT-018 editable-SQL surface in the same view. There is deliberately NO "Retry" button on the failed step, because re-running the same invalid SQL deterministically fails again — a retry would be a lying affordance. Workspace and prior reports remain untouched |
 | **Complete** | `assemble` step finished | Brief completion state before auto-navigating to [[09-report-view\|Report View]] |
 
 **Edge Cases:**
 - On mobile, if a user needs to edit SQL, the app shows a persistent hint on the SQL card ("SQL editing is available on desktop") rather than a broken partial-edit UI — this is a deliberate platform scope decision, not an oversight, consistent with [[branding]]'s desktop-primary workflow designation.
 - User navigates away mid-run → run continues server-side (per [[architecture]] — "runs are server-side state; the UI is a viewer"); returning to this route later reconnects to the live stream at its current point rather than restarting the view.
-- Multiple steps failing in sequence (e.g., cascading engine issue) → each failure is shown individually with its own retry, not collapsed into one generic "something went wrong" for the whole run.
+- Multiple steps failing in sequence (e.g., cascading engine issue) → each failure is shown individually, not collapsed into one generic "something went wrong" for the whole run. On the `execute` step specifically the failure is terminal for the run: the Execute failure banner carries the engine's reason and the edit/refine recovery path — there is no retry affordance for a step whose input is the invalid SQL that just failed (retrying it would deterministically fail again).

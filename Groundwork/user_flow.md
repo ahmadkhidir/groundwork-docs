@@ -159,14 +159,14 @@ graph TD
 - At step 5, if the SQL looks correct, she proceeds directly to the Report View without halting the run — the SQL panel is always available for inspection but never forces an interruption.
 
 **Alternate Path C — Engine Lost Mid-Run:**
-- At step 4 or 8, if the session engine is lost between steps (e.g., an infrastructure blip), the run does not restart from the beginning. Because every step boundary is persisted, the orchestrator retries the affected step idempotently and resumes from the last completed step once the engine is available again (see [[architecture]]). The Run Viewer shows a brief "reconnecting" state rather than an error, unless retries are exhausted, in which case the specific failed step surfaces a retry affordance while the workspace and prior reports remain untouched.
+- At step 4 or 8, if the session engine is lost between steps (e.g., an infrastructure blip), the run does not restart from the beginning. Because every step boundary is persisted, the orchestrator retries the affected step idempotently and resumes from the last completed step once the engine is available again (see [[architecture]]). The Run Viewer shows a brief "reconnecting" state rather than an error. If an `execute` step fails for a content reason (e.g., DuckDB Binder Error from invalid generated SQL), the run fails honestly instead: the Run Viewer shows the Execute failure banner — "The generated query couldn't run" plus the engine's actual reason, with DuckDB's `LINE n:` SQL echo behind an "Engine detail" disclosure — and the recovery path is the edit/refine route in the same view ([[screens/08-run-viewer|Run Viewer]], FEAT-018), never a blind retry affordance, since re-running the same invalid SQL deterministically fails again.
 
 ### States Referenced
 
 | Screen | States |
 |---|---|
 | Ingest Confirmation - Candidate Joins | Pending review, Accepted, Rejected |
-| Run Viewer | Live streaming, Halted (user-initiated), Reconnecting (engine loss), Failed-with-retry |
+| Run Viewer | Live streaming, Halted (user-initiated), Reconnecting (engine loss), Execute failed (banner + edit/refine recovery) |
 | SQL Panel | Read-only, Editing, Edited-pending-resume |
 | Report View | Loaded, Forked (linked to parent report) |
 

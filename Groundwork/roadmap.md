@@ -159,7 +159,7 @@ gantt
 | FEAT-045 | Read-Only Workspace Sharing | Lets a colleague view a workspace's reports without being able to change anything |
 | FEAT-046 | Read-Only Report Sharing by ID | Lets a single report be shared outside the workspace's membership |
 | FEAT-047 | User-Facing Usage View | Lets users see what's driving their engine, storage, and model usage |
-| FEAT-051 | Smart Question Generation (Model-Assisted) | Gives Pro/Team users an on-demand, data-informed upgrade to the deterministic suggestions strip — smarter questions for those who want them, with the free strip unchanged on every tier |
+| FEAT-051 | Smart Question Generation (Model-Assisted) | Gives Pro/Team users on-demand, data-informed smart questions that accumulate in a per-workspace bucket beside the deterministic strip — smarter questions for those who want them, with the free strip unchanged on every tier |
 
 ## What's Next
 

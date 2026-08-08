@@ -5,7 +5,7 @@
 
 ## Overview
 
-This is Groundwork's data model, expressed as JSON Schema 2020-12 entities. It follows the storage split established in [[architecture]]: every entity here lives in the application database (Neon Postgres) as durable, queryable state — accounts, password reset tokens, workspaces, the semantic layer, orchestration state, reports, sharing, notifications, the audit/egress log, usage, and deletion records. Raw ingested data itself is **not** modeled here as a schema entity — it lives as normalized Parquet in object storage (R2), referenced by `Dataset.parquet_location`, with the disposable session DuckDB engine as a compute layer over it, never a system of record.
+This is Groundwork's data model, expressed as JSON Schema 2020-12 entities. It follows the storage split established in [[architecture]]: every entity here lives in the application database (Neon Postgres) as durable, queryable state — accounts, password reset tokens, workspaces, the semantic layer, orchestration state, reports, sharing, notifications, the audit/egress log, usage, smart-question suggestion buckets, and deletion records. Raw ingested data itself is **not** modeled here as a schema entity — it lives as normalized Parquet in object storage (R2), referenced by `Dataset.parquet_location`, with the disposable session DuckDB engine as a compute layer over it, never a system of record.
 
 Two design choices apply throughout:
 - **Every relationship between entities uses `$ref`** — a `*_id` property plus a documented relationship in the Relationships section below, never an inlined copy of another entity's fields.
@@ -228,6 +228,25 @@ Two design choices apply throughout:
 }
 ```
 
+### SuggestionQuestion
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://groundwork.app/schema/suggestion-question.schema.json",
+  "title": "SuggestionQuestion",
+  "description": "One model-generated smart question persisted in a workspace's suggestion bucket, per [[features]] FEAT-051. Smart questions accumulate here so a user who picks one of ten generated questions never pays tokens to regenerate the other nine on a later visit. Deduplicated by exact text per workspace (`UNIQUE (workspace_id, question)`); removed individually via `DELETE /v1/workspaces/:id/suggestions/:id`. Deliberately distinct from the FEAT-050 deterministic suggestions, which are computed at read time from persisted metadata and are never stored here or individually deletable.",
+  "type": "object",
+  "properties": {
+    "id": { "type": "string", "description": "Unique identifier for the persisted smart question. TEXT PRIMARY KEY; the id returned in the `smart` array of `GET /v1/workspaces/:id/suggestions` and used by `DELETE /v1/workspaces/:id/suggestions/:id`." },
+    "workspace_id": { "type": "string", "description": "References the Workspace this smart question belongs to. TEXT NOT NULL, foreign key to workspaces(id) with ON DELETE CASCADE — the bucket dies with the workspace, per [[features]] FEAT-043's cascade. Indexed." },
+    "question": { "type": "string", "description": "The model-generated question text, shown as a smart suggestion chip on [[screens/04-workspace-home|Workspace Home]]. Deduplicated by exact text within the workspace via `UNIQUE (workspace_id, question)`, and generation also deduplicates against the deterministic suggestion set, so a question already on the list is never generated twice." },
+    "created_at": { "type": "string", "format": "date-time", "description": "When this smart question was generated and appended to the bucket. TIMESTAMPTZ NOT NULL, default now()." }
+  },
+  "required": ["id", "workspace_id", "question", "created_at"]
+}
+```
+
 ### Run
 
 ```json
@@ -288,7 +307,7 @@ Two design choices apply throughout:
     "id": { "type": "string", "description": "Unique identifier for the report." },
     "workspace_id": { "type": "string", "description": "References the Workspace this report belongs to." },
     "run_id": { "type": "string", "description": "References the Run that produced this report." },
-    "title": { "type": "string", "description": "A short, human-readable title for the report, shown on [[screens/04-workspace-home|Workspace Home]] and [[screens/09-report-view|Report View]]." },
+    "title": { "type": "string", "description": "A short, human-readable title for the report, shown on [[screens/04-workspace-home|Workspace Home]] and [[screens/09-report-view|Report View]]. Derived from the question that initiated the run: `deriveReportTitle` truncates a question-derived title at 80 characters at a WORD BOUNDARY — never mid-word — so the stored title is always a whole-words, human-readable summary rather than a hard character cut." },
     "narrative": { "type": "string", "description": "The plain-language narrative text answering the user's question, generated only from the run's result set." },
     "chart_spec": {
       "type": "object",
@@ -494,6 +513,7 @@ Two design choices apply throughout:
 - **Relationship** `workspace_id` references **Workspace**; `source_column_id` and `target_column_id` each reference **Column** — a confirmed join, created when a CandidateJoin is accepted (or added manually) and persisted in the semantic layer.
 - **MetricDefinition** `workspace_id` references **Workspace** — each metric definition belongs to exactly one workspace's semantic layer.
 - **Correction** `workspace_id` references **Workspace**, and `originating_run_id` references **Run** — a correction is scoped to a workspace and traceable back to the run during which it was made.
+- **SuggestionQuestion** `workspace_id` references **Workspace** — each persisted smart question belongs to exactly one workspace's suggestion bucket and is removed with it (ON DELETE CASCADE), per [[features]] FEAT-051/FEAT-043.
 - **Run** `workspace_id` references **Workspace**; `parent_run_id` references another **Run** — used for fork-on-amendment (per [[features]] FEAT-025), forming a tree of runs when a completed run's step is amended.
 - **Step** `run_id` references **Run**; `parent_step_id` references another **Step** — steps belong to a run in sequence, with `parent_step_id` capturing forks within a run's amendment history.
 - **Report** `workspace_id` references **Workspace**, `run_id` references **Run**, and `parent_report_id` references another **Report** — a report is produced by exactly one run and may be forked from a parent report via a compositional follow-up question (per [[features]] FEAT-021/FEAT-025). `chart_spec` and `reconciliation_summary` are inlined value objects, not references. `provenance_links` is an array of ids referencing **ProvenanceLink**.
