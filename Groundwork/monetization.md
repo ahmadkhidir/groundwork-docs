@@ -14,6 +14,8 @@ Groundwork's real infrastructure cost is genuinely usage-variable per [[architec
 
 **Design decision — discoverability is never paywalled either.** Question suggestions ([[features]] FEAT-050) are on every tier: they cost nothing to produce (deterministic, no model call, no engine), and gating the exact feature that de-risks a Tunde-style Free user's first session would contradict the Free tier's stated purpose as a real, uncrippled experience. The runs a suggestion triggers are metered like any other question, so usage volume is still gated per tier.
 
+**Design decision — convenience is paywalled; the discoverability floor is not.** Model-assisted smart question generation ([[features]] FEAT-051) is a convenience/capability feature layered on top of the FEAT-050 strip: it costs a model call and engine-seconds per click, so it is gated Pro/Team — and never Team-only, because a single Pro analyst is its primary beneficiary and nothing about it is collaboration-specific, so reserving it for Team would over-price it against the Pro tier's stated purpose as the core revenue tier. The deterministic strip stays on every tier, unchanged, and on Free the smart affordance appears as the standard locked Upgrade Prompt ([[screens]] shared component) — visible with an "Upgrade to Pro/Team" CTA, never silently absent. Each generation is metered and egress-logged like any model usage, so usage volume stays gated per tier while the trust floor remains identical everywhere.
+
 ## Pricing Tiers
 
 ### Free Tier
@@ -36,6 +38,7 @@ Groundwork's real infrastructure cost is genuinely usage-variable per [[architec
 - No Excel/CSV or other export formats beyond PDF
 - No column-level exclusion (the fine-grained, user-controlled override sits above the automatic PII defaults, which apply on every tier)
 - No workspace or report sharing
+- No smart question generation (the deterministic suggestions strip remains available on every tier)
 - Usage beyond the included monthly allotment is billed at pay-as-you-go overage rates rather than blocked outright, so a good month doesn't hard-stop mid-analysis — but sustained heavy use makes Pro cheaper
 
 ### Pro Tier
@@ -54,6 +57,7 @@ Groundwork's real infrastructure cost is genuinely usage-variable per [[architec
 - Markdown/HTML and JSON export
 - Single chart image export
 - Detailed usage view (engine-seconds, storage, tokens breakdown)
+- Model-assisted smart question suggestions (one-click, data-informed question generation — [[features]] FEAT-051)
 - Read-only report sharing by ID
 
 **Limitations:**
@@ -131,6 +135,7 @@ Verification, trust, and privacy features are marked **Yes** on every tier delib
 | FEAT-046 | Read-Only Report Sharing by ID | No | Yes | Yes |
 | FEAT-047 | User-Facing Usage View | Basic (totals only) | Detailed breakdown | Detailed breakdown |
 | FEAT-050 | Question Suggestions | Yes | Yes | Yes |
+| FEAT-051 | Smart Question Generation (Model-Assisted) | No | Yes | Yes |
 
 ## Payment & Billing
 

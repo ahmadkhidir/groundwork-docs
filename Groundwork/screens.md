@@ -13,7 +13,7 @@
 | 1 | Landing Page | [[screens/01-landing-page\|01-landing-page]] | `/` | Both | FEAT-001 |
 | 2 | Sign Up / Login | [[screens/02-sign-up-login\|02-sign-up-login]] | `/signup`, `/login` | Both | FEAT-001 |
 | 3 | Workspace List | [[screens/03-workspace-list\|03-workspace-list]] | `/workspaces` | Both | FEAT-002 |
-| 4 | Workspace Home | [[screens/04-workspace-home\|04-workspace-home]] | `/workspaces/:id` | Both | FEAT-011, FEAT-012, FEAT-013, FEAT-034, FEAT-048, FEAT-050 |
+| 4 | Workspace Home | [[screens/04-workspace-home\|04-workspace-home]] | `/workspaces/:id` | Both | FEAT-011, FEAT-012, FEAT-013, FEAT-034, FEAT-048, FEAT-050, FEAT-051 |
 | 5 | File Upload | [[screens/05-file-upload\|05-file-upload]] | `/workspaces/:id/upload` | Both | FEAT-003, FEAT-049 |
 | 6 | Ingest Progress | [[screens/06-ingest-progress\|06-ingest-progress]] | `/workspaces/:id/ingest/progress` | Both | FEAT-004, FEAT-005 |
 | 7 | Ingest Confirmation | [[screens/07-ingest-confirmation\|07-ingest-confirmation]] | `/workspaces/:id/ingest/confirm` | Both (desktop-optimized) | FEAT-006, FEAT-007, FEAT-008, FEAT-009, FEAT-049 |
@@ -114,6 +114,6 @@ Used on: all authenticated screens
 - **Web (mobile viewport):** `Navbar` collapses to a hamburger-triggered `Drawer` containing the same items; workspace-level `Sidebar` items move into the drawer rather than a separate bottom bar, since the product is report-reading-first on mobile, not tab-navigation-first
 
 ### Upgrade Prompt (Tier Gating)
-Used on: [[screens/11-export-dialog|Export Dialog]], [[screens/13-workspace-settings|Workspace Settings]] (sharing, column exclusion)
+Used on: [[screens/11-export-dialog|Export Dialog]], [[screens/13-workspace-settings|Workspace Settings]] (sharing, column exclusion), [[screens/04-workspace-home|Workspace Home]] (smart generation, [[features]] FEAT-051)
 - Locked options remain visible (never hidden) but styled with reduced-emphasis (`text-secondary`, `icon-sm` lock icon) and a small plan-named `Link` CTA, per [[monetization]]'s tier gate mapping — users always see what they're missing, never a silently absent option
 - The CTA names the plan(s) that actually unlock the feature, never a generic "Upgrade": Team-only features (e.g., workspace sharing, FEAT-045) say **"Upgrade to Team"**; Pro/Team features (e.g., column exclusion FEAT-010, report sharing FEAT-046, detailed usage FEAT-047) say **"Upgrade to Pro/Team"**. The copy is per-feature, resolved from [[monetization]]'s Feature Gate Mapping

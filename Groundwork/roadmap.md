@@ -138,6 +138,7 @@ gantt
 - Sharing extends to individual reports and read-only workspace access for colleagues
 - More export formats and background notifications round out the day-to-day experience
 - Users can see what their usage is costing before it becomes a billing conversation
+- Pro/Team users can generate smarter, data-informed suggested questions on demand, while the free deterministic starting point stays on every tier
 
 **Features Delivered:**
 
@@ -158,6 +159,7 @@ gantt
 | FEAT-045 | Read-Only Workspace Sharing | Lets a colleague view a workspace's reports without being able to change anything |
 | FEAT-046 | Read-Only Report Sharing by ID | Lets a single report be shared outside the workspace's membership |
 | FEAT-047 | User-Facing Usage View | Lets users see what's driving their engine, storage, and model usage |
+| FEAT-051 | Smart Question Generation (Model-Assisted) | Gives Pro/Team users an on-demand, data-informed upgrade to the deterministic suggestions strip — smarter questions for those who want them, with the free strip unchanged on every tier |
 
 ## What's Next
 
