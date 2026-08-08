@@ -32,7 +32,7 @@
 | Usage stat row | Stat display | Both | Engine-seconds / storage / tokens for the current period | GET `/api/workspaces/:id/usage` |
 | Delete Workspace | Button (Destructive) | Both | Opens [[14-deletion-confirmation-proof\|Deletion Confirmation & Proof]] | — |
 | View Audit Log | Button | Both | Navigates to [[17-egress-audit-log\|Egress / Audit Log]] | — |
-| Upgrade Prompt | Shared component | Both | Shown on Sharing and detailed-Usage sections for Free-tier accounts | [[monetization]] Feature Gate Mapping |
+| Upgrade Prompt | Shared component | Both | Shown on gated sections for accounts below the unlocking tier; CTA names the plan(s) that unlock the feature per [[screens]]' shared-component copy rule — "Upgrade to Team" for workspace members (FEAT-045, Team-only), "Upgrade to Pro/Team" for column exclusion (FEAT-010), shared report links (FEAT-046), and detailed Usage (FEAT-047) | [[monetization]] Feature Gate Mapping |
 
 ### Data Requirements
 
@@ -46,7 +46,7 @@
 **Data Flow:**
 1. Screen mounts → each tab's data loads independently (lazy-loaded per tab on web to avoid fetching sharing/usage data before the user opens those tabs).
 2. Toggling column exclusion → optimistic UI update, PATCH request, rollback with an inline error if it fails.
-3. Free-tier users see Sharing and detailed Usage sections replaced with an Upgrade Prompt state rather than a fetch attempt.
+3. Free-tier users see gated sections (Sharing, detailed Usage) replaced with an Upgrade Prompt state rather than a fetch attempt, each with the plan-named CTA that unlocks it per [[screens]]' shared-component copy rule — "Upgrade to Team" for workspace members (FEAT-045), "Upgrade to Pro/Team" for column exclusion (FEAT-010), shared report links (FEAT-046), and detailed Usage (FEAT-047).
 
 ### States
 
@@ -54,7 +54,7 @@
 |---|---|---|
 | **Loading** | Tab's data being fetched | Skeleton per tab |
 | **Loaded** | Data fetched successfully | Full tab content |
-| **Locked (Free tier)** | Sharing tab or detailed Usage accessed on Free tier | Upgrade Prompt in place of the tab's normal content, per [[monetization]] |
+| **Locked (Free tier)** | Gated section accessed on a tier that doesn't include it | Upgrade Prompt in place of the section's normal content, with the plan-named CTA per feature ("Upgrade to Team" for workspace members, "Upgrade to Pro/Team" for column exclusion, shared report links, and detailed Usage), per [[monetization]] |
 | **Error** | Fetch or update failed | Shared Error State; for a failed toggle update specifically, an inline error with the toggle reverted to its prior state |
 
 **Edge Cases:**

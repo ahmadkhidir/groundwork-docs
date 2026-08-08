@@ -22,14 +22,14 @@
 |---|---|---|---|---|
 | Email input | TextInput | Both | Account identifier | User input |
 | Password input | TextInput (masked) | Both | Credential | User input |
-| Display name input | TextInput | Both | Optional; shown only in Sign Up mode. Shown in workspace member lists and audit entries per [[schema]] | User input |
+| Display name input | TextInput | Both | Optional; shown only in Sign Up mode. When left blank, the stored value defaults to the email's local-part (derived server-side per [[schema]] `User.display_name`), so `display_name` is never stored empty. Shown in workspace member lists and audit entries per [[schema]] | User input |
 | Submit button | Button (Primary) | Both | Triggers auth | — |
 | Mode toggle | Link | Both | Switch between Sign Up / Login | — |
 | Forgot password | Link | Both (Login mode only) | Routes to [[18-forgot-password\|Forgot Password]] | — |
 
 ### Data Requirements
 
-**Data Needed:** None on load. On submit (Sign Up): email, password, display_name (optional) → POST to account-creation endpoint; if display_name is left blank, the server derives it from the email's local-part per [[schema]]'s `User.display_name`. On submit (Login): email, password → POST to auth endpoint.
+**Data Needed:** None on load. On submit (Sign Up): email, password, display_name (optional) → POST to account-creation endpoint. The display name field is optional, and an empty submission is treated as "derive from the email's local-part": the blank default is that derived value, applied server-side per [[schema]]'s `User.display_name`, never stored as an empty string. On submit (Login): email, password → POST to auth endpoint.
 
 **Data Flow:**
 1. User fills form, taps Submit.
@@ -51,4 +51,4 @@
 - Rapid double-tap on Submit → button disabled immediately after first tap to prevent duplicate requests.
 - Deep link into a protected route while unauthenticated → redirected here per the Authentication Gate; on success, redirected back to the originally requested route, not always to [[03-workspace-list|Workspace List]].
 - Password field visibility toggle (show/hide) available on both platforms.
-- Sign Up submitted with display name left blank → account is still created; `display_name` is derived from the email's local-part server-side, per [[schema]]. No error or extra prompt is shown for leaving it blank.
+- Sign Up submitted with display name left blank → account is still created; `display_name` is derived from the email's local-part server-side per [[schema]], so the stored value is the derived local-part (the blank default), never an empty string. No error or extra prompt is shown for leaving it blank.

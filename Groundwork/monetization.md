@@ -127,7 +127,7 @@ Verification, trust, and privacy features are marked **Yes** on every tier delib
 | FEAT-044 | Zero-Retention Provider Terms Notice | Yes | Yes | Yes |
 | FEAT-045 | Read-Only Workspace Sharing | No | No | Yes |
 | FEAT-046 | Read-Only Report Sharing by ID | No | Yes | Yes |
-| FEAT-047 | User-Facing Usage View | Basic (totals only) | Detailed breakdown | Detailed breakdown, per-member |
+| FEAT-047 | User-Facing Usage View | Basic (totals only) | Detailed breakdown | Detailed breakdown |
 
 ## Payment & Billing
 
@@ -139,9 +139,9 @@ Verification, trust, and privacy features are marked **Yes** on every tier delib
 
 **Billing Events:**
 - **Upgrade (tier change):** Immediate access to the new tier's feature gates and allotment; charge is prorated for the remainder of the current billing period.
-- **Downgrade (tier change):** Takes effect at the end of the current billing period, not immediately — a user doesn't lose access to a feature (e.g., workspace sharing) mid-cycle after already using it that month.
+- **Downgrade (tier change):** Takes effect at the end of the current billing period, not immediately — a user doesn't lose access to a feature (e.g., workspace sharing) mid-cycle after already using it that month. If the new tier allows fewer workspaces than the user currently has, the excess workspaces become read-only (not deleted) when the downgrade takes effect — except the **most-recently-updated workspace stays writable** (most-recently-updated = `Workspace.updated_at`, per [[schema]]), so the user keeps working where they were last active and can consolidate or delete the excess at their own pace.
 - **Allotment overage:** Usage beyond the included monthly allotment (engine-seconds, storage, tokens, or run count) is metered and billed automatically at the end of the billing period at the tier's stated overage rate — it does not block the user mid-session, consistent with [[architecture]]'s principle of never interrupting an in-flight run.
-- **Cancellation:** Paid access continues until the end of the current billing period, then the account reverts to Free tier limits. Workspaces beyond the Free tier's single-workspace limit become read-only (not deleted) until the user either upgrades again or explicitly deletes them via the deletion cascade ([[features]] FEAT-043).
+- **Cancellation:** Paid access continues until the end of the current billing period, then the account reverts to Free tier limits. Workspaces beyond the Free tier's single-workspace limit become read-only (not deleted) until the user either upgrades again or explicitly deletes them via the deletion cascade ([[features]] FEAT-043) — with the same most-recently-updated-workspace-stays-writable rule as Downgrade above.
 - **Failed Payment:** Stripe's automatic retry schedule (up to 3 attempts over ~2 weeks). After final failure, the account downgrades to Free tier limits — no data is deleted; the one-workspace-one-delete cascade is a distinct, explicit user action, never an automatic consequence of a billing failure.
 - **Refund:** Manual process handled via support request, issued through Stripe. Overage charges (reflecting real infrastructure cost already incurred) are refunded only in cases of demonstrable billing error, not buyer's remorse.
 

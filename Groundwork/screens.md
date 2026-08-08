@@ -115,4 +115,5 @@ Used on: all authenticated screens
 
 ### Upgrade Prompt (Tier Gating)
 Used on: [[screens/11-export-dialog|Export Dialog]], [[screens/13-workspace-settings|Workspace Settings]] (sharing, column exclusion)
-- Locked options remain visible (never hidden) but styled with reduced-emphasis (`text-secondary`, `icon-sm` lock icon) and a small "Upgrade to Pro/Team" `Link`, per [[monetization]]'s tier gate mapping — users always see what they're missing, never a silently absent option
+- Locked options remain visible (never hidden) but styled with reduced-emphasis (`text-secondary`, `icon-sm` lock icon) and a small plan-named `Link` CTA, per [[monetization]]'s tier gate mapping — users always see what they're missing, never a silently absent option
+- The CTA names the plan(s) that actually unlock the feature, never a generic "Upgrade": Team-only features (e.g., workspace sharing, FEAT-045) say **"Upgrade to Team"**; Pro/Team features (e.g., column exclusion FEAT-010, report sharing FEAT-046, detailed usage FEAT-047) say **"Upgrade to Pro/Team"**. The copy is per-feature, resolved from [[monetization]]'s Feature Gate Mapping
