@@ -1,6 +1,6 @@
 # Screens
 
-**Last Updated:** 2026-08-08
+**Last Updated:** 2026-08-09
 **Source:** [[README]], [[user_personas]], [[features]], [[branding]], [[user_flow]]
 
 **Experience Tier:** `Standard` *(restated from [[branding]] — no Creative Direction/Motion Design/Asset Style Guide sections apply to any screen in this product)*
@@ -29,6 +29,7 @@
 | 17 | Egress / Audit Log | [[screens/17-egress-audit-log\|17-egress-audit-log]] | `/workspaces/:id/audit-log` | Both (desktop-optimized) | FEAT-042, FEAT-044 |
 | 18 | Forgot Password | [[screens/18-forgot-password\|18-forgot-password]] | `/forgot-password` | Both | FEAT-001 |
 | 19 | Reset Password | [[screens/19-reset-password\|19-reset-password]] | `/reset-password` | Both | FEAT-001 |
+| 20 | Profile & Security | [[screens/20-profile-security\|20-profile-security]] | `/settings/profile` | Both | FEAT-052 |
 
 ## Navigation Map
 
@@ -69,6 +70,11 @@ graph TD
     Settings -->|Audit Log tab| AuditLog[Egress / Audit Log]
     Upload -.->|"See what happens to your data"| AuditLog
 
+    AccountMenu[Account menu] --> PlanBilling[Plan & Billing - /settings]
+    AccountMenu --> Profile[Profile & Security - /settings/profile]
+    Profile -->|Sign out| Landing
+    Profile -->|Delete account| AccountDeleted[Landing Page - ?deleted=1]
+
     RunViewer -.->|Edit SQL, persist correction| SemanticLayer
 ```
 
@@ -104,14 +110,16 @@ Used on: all screens with data fetching
 - Centered icon (`error` token color), `h3` title "Something went wrong," `body-small` description, primary "Try Again" button (retries the failed request), optional Ghost "Go Back"
 
 ### Delete Confirmation Modal
-Used on: [[screens/13-workspace-settings|Workspace Settings]] (workspace deletion), [[screens/04-workspace-home|Workspace Home]] (single-dataset deletion, FEAT-048), [[screens/05-file-upload|File Upload]] (duplicate-filename "Replace" choice, FEAT-049 — reuses this pattern since Replace deletes the prior dataset), any future destructive action
-- `Modal` with explicit scope of what will be destroyed spelled out in the body (never a bare "Are you sure?") — for single-dataset deletion (FEAT-048) and Replace (FEAT-049), this includes naming any dependent `Relationship`/`MetricDefinition` **and**, separately, any type override or reviewed PII decision recorded on the dataset's own columns that will be lost and not carried forward
+Used on: [[screens/13-workspace-settings|Workspace Settings]] (workspace deletion), [[screens/04-workspace-home|Workspace Home]] (single-dataset deletion, FEAT-048), [[screens/05-file-upload|File Upload]] (duplicate-filename "Replace" choice, FEAT-049 — reuses this pattern since Replace deletes the prior dataset), [[screens/20-profile-security|Profile & Security]] (account deletion, FEAT-052 — the account-scope variant additionally requires typing the account's email, mirroring the workspace-name typing below), any future destructive action
+- `Modal` with explicit scope of what will be destroyed spelled out in the body (never a bare "Are you sure?") — for single-dataset deletion (FEAT-048) and Replace (FEAT-049), this includes naming any dependent `Relationship`/`MetricDefinition` **and**, separately, any type override or reviewed PII decision recorded on the dataset's own columns that will be lost and not carried forward; for account deletion (FEAT-052), this includes all workspaces, all data, immediate billing cancellation, and no automatic refund
 - Buttons: Ghost "Cancel" and Destructive "Delete" (per [[branding]] Buttons component tokens)
+- For irreversible account-scope destruction (workspace deletion and account deletion), a type-to-confirm `TextInput` must match the workspace name (FEAT-043) or account email (FEAT-052) exactly before "Delete" is enabled — a deliberate high-friction confirmation
 
 ### Navigation Shell
 Used on: all authenticated screens
 - **Web (desktop):** Sticky `Navbar` (logo, workspace switcher, notifications bell, account menu) + collapsible `Sidebar` within a workspace (Home, Semantic Layer, Settings)
 - **Web (mobile viewport):** `Navbar` collapses to a hamburger-triggered `Drawer` containing the same items; workspace-level `Sidebar` items move into the drawer rather than a separate bottom bar, since the product is report-reading-first on mobile, not tab-navigation-first
+- **Account menu (both platforms):** the account-level entry point on every authenticated screen. Items: "Plan & Billing" (`/settings`, the account plan screen) and "Profile & Security" (`/settings/profile`, [[screens/20-profile-security|Profile & Security]]). Sign out is deliberately NOT a menu item — it lives only on the Profile & Security screen, the single sign-out affordance per [[features]] FEAT-052; the menu exists to navigate to where the action lives.
 
 ### Upgrade Prompt (Tier Gating)
 Used on: [[screens/11-export-dialog|Export Dialog]], [[screens/13-workspace-settings|Workspace Settings]] (sharing, column exclusion), [[screens/04-workspace-home|Workspace Home]] (smart generation, [[features]] FEAT-051)

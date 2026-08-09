@@ -1,6 +1,6 @@
 # Screen 1: Landing Page
 
-**Route:** `/`
+**Route:** `/` (also the redirect target after account deletion, `/?deleted=1` — [[features]] FEAT-052)
 **Platform:** Both (server-rendered per [[architecture]] — the one screen using SSR/SSG)
 **Purpose:** Explain what Groundwork is and get a visitor to sign up.
 **Entry Points:** External (search, direct link, shared marketing link).
@@ -41,6 +41,8 @@
 | State | Condition | What the User Sees |
 |---|---|---|
 | **Loaded** | Always (static content) | Full marketing page |
+| **Account Deleted** | URL carries `?deleted=1` (the redirect target after a successful account deletion, [[features]] FEAT-052) | The normal landing page plus a neutral, dismissible confirmation banner: "Your account and all its data have been deleted." The banner is informational only — it is cleared on navigation and never implies an error |
 
 **Edge Cases:**
 - Already-authenticated user visits `/` → still shown the landing page (not force-redirected), but the primary CTA changes to "Go to Workspaces" instead of "Get Started."
+- `?deleted=1` visited by an already-authenticated user (a different account, or the tab from a deleted account that still holds a decryptable-but-stale cookie) → the banner still shows; no data is implied to be at risk, and any API request from a deleted account's stale session fails closed with 401/404 per [[architecture]].

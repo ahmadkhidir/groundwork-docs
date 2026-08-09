@@ -1,6 +1,6 @@
 # Roadmap
 
-**Last Updated:** 2026-08-08
+**Last Updated:** 2026-08-09
 **Source:** [[README]], [[features]]
 
 ## Vision Statement
@@ -139,6 +139,7 @@ gantt
 - More export formats and background notifications round out the day-to-day experience
 - Users can see what their usage is costing before it becomes a billing conversation
 - Pro/Team users can generate smarter, data-informed suggested questions on demand, while the free deterministic starting point stays on every tier
+- Users can manage their account from one place — change their password, sign out, and delete their account with everything provably gone
 
 **Features Delivered:**
 
@@ -160,6 +161,7 @@ gantt
 | FEAT-046 | Read-Only Report Sharing by ID | Lets a single report be shared outside the workspace's membership |
 | FEAT-047 | User-Facing Usage View | Lets users see what's driving their engine, storage, and model usage |
 | FEAT-051 | Smart Question Generation (Model-Assisted) | Gives Pro/Team users on-demand, data-informed smart questions that accumulate in a per-workspace bucket beside the deterministic strip — smarter questions for those who want them, with the free strip unchanged on every tier |
+| FEAT-052 | Account Profile & Self-Management | Lets users change their password, sign out, and delete their account — the account-scoped completion of the deletion promise, reusing the workspace cascade (FEAT-043) |
 
 ## What's Next
 

@@ -1,6 +1,6 @@
 # Monetization
 
-**Last Updated:** 2026-08-08
+**Last Updated:** 2026-08-09
 **Source:** [[README]], [[user_personas]], [[features]], [[architecture]]
 
 ## Revenue Model
@@ -136,6 +136,7 @@ Verification, trust, and privacy features are marked **Yes** on every tier delib
 | FEAT-047 | User-Facing Usage View | Basic (totals only) | Detailed breakdown | Detailed breakdown |
 | FEAT-050 | Question Suggestions | Yes | Yes | Yes |
 | FEAT-051 | Smart Question Generation (Model-Assisted) | No | Yes | Yes |
+| FEAT-052 | Account Profile & Self-Management | Yes | Yes | Yes |
 
 ## Payment & Billing
 
@@ -152,6 +153,7 @@ Verification, trust, and privacy features are marked **Yes** on every tier delib
 - **Cancellation:** Paid access continues until the end of the current billing period, then the account reverts to Free tier limits. Workspaces beyond the Free tier's single-workspace limit become read-only (not deleted) until the user either upgrades again or explicitly deletes them via the deletion cascade ([[features]] FEAT-043) — with the same most-recently-updated-workspace-stays-writable rule as Downgrade above.
 - **Failed Payment:** Stripe's automatic retry schedule (up to 3 attempts over ~2 weeks). After final failure, the account downgrades to Free tier limits — no data is deleted; the one-workspace-one-delete cascade is a distinct, explicit user action, never an automatic consequence of a billing failure.
 - **Refund:** Manual process handled via support request, issued through Stripe. Overage charges (reflecting real infrastructure cost already incurred) are refunded only in cases of demonstrable billing error, not buyer's remorse.
+- **Account deletion ([[features]] FEAT-052):** distinct from plan cancellation. When a user deletes their account, the active Stripe subscription is cancelled **immediately** — not at period end — and the Stripe customer object is deleted (removing payment methods and customer PII on Stripe's side). No automatic refund is issued: account deletion is not a refund trigger, and the manual refund policy above still applies. Account self-management (change password, sign out, delete account) is available on every tier — it is a trust/privacy control, never a gated feature.
 
 ## Key Metrics
 

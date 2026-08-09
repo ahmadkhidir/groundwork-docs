@@ -1,6 +1,6 @@
 # User Flow
 
-**Last Updated:** 2026-08-08
+**Last Updated:** 2026-08-09
 **Source:** [[README]], [[user_personas]], [[features]], [[architecture]], [[branding]]
 
 Screen names introduced in this document are canonical — [[screens]] formalizes them rather than renaming them.
@@ -14,6 +14,7 @@ Screen names introduced in this document are canonical — [[screens]] formalize
 | 3 | Reconciliation & Board Reporting | [[user_personas\|Ngozi]] | Workspace Home | A reconciled report is exported for two audiences and re-checked on mobile | FEAT-008, FEAT-009, FEAT-029, FEAT-030, FEAT-035, FEAT-036, FEAT-041 |
 | 4 | Returning to a Sleeping Workspace | Any user | Workspace List | User's question is answered without ever seeing a blocking wait | FEAT-011, FEAT-012, FEAT-034 |
 | 5 | Workspace Deletion | Any user | Workspace Settings | Workspace and all derived state provably destroyed | FEAT-043 |
+| 6 | Account Self-Management & Deletion | Any user | Account menu → Profile & Security | Password changed, signed out, and the account with all its workspaces provably deleted | FEAT-001, FEAT-043, FEAT-052 |
 
 ## Flow 1: First Upload to First Answer
 
@@ -315,12 +316,73 @@ graph TD
 | Confirmation Dialog | Default, Confirming |
 | Deletion Proof | Success (with timestamp and scope), In-progress, Failed-with-retry |
 
+## Flow 6: Account Self-Management & Deletion
+
+**Persona:** Any user.
+**Entry Point:** Navigation Shell → account menu → "Profile & Security" (`/settings/profile`).
+**Outcome:** The user changes their password, signs out, or deletes their account with everything provably gone.
+
+### Diagram
+
+```mermaid
+graph TD
+    A[Account menu] --> B[Profile & Security - /settings/profile]
+    B --> C{Action}
+    C -->|Change password| D[Change Password Form]
+    D --> E{Current password correct?}
+    E -->|No| F[Inline error - 400 invalid_current_password]
+    F --> D
+    E -->|Yes| G[New hash written, reset tokens invalidated]
+    G --> D
+    C -->|Sign out| H[Auth.js signOut - cookie cleared]
+    H --> I[Landing Page]
+    C -->|Delete account| J[Confirmation Modal - full scope + type email]
+    J --> K{User confirms?}
+    K -->|Cancel| B
+    K -->|Confirm| L[Account Cascade]
+    L --> M{Cascade completes?}
+    M -->|No| N[Partial failure - account intact, retry]
+    N --> L
+    M -->|Yes| O[Sign out + redirect]
+    O --> P[Landing Page - ?deleted=1 banner]
+```
+
+### Walkthrough
+
+**Happy Path:**
+1. User opens the account menu from the Navigation Shell and selects "Profile & Security" (FEAT-052).
+2. The screen shows the account email and display name (read-only) and three actions.
+3. **Change password:** user enters the current password, a new password, and a confirmation. On submit, the server verifies the current password, writes the new hash, and invalidates any outstanding reset tokens. The form clears with an inline "Password updated" confirmation. Existing sessions are not revoked (JWT strategy) — the screen does not claim otherwise.
+4. **Sign out:** user taps Sign out; the existing Auth.js `signOut` clears the session cookie and the user lands on the Landing Page. This is the product's single sign-out affordance.
+5. **Delete account:** user taps Delete account; the shared Delete Confirmation Modal opens stating the full scope — all workspaces and their data destroyed, billing cancelled immediately, no automatic refund — and requires typing the account email to enable Delete.
+6. User confirms; the account cascade runs: every owned workspace is deleted via the FEAT-043 cascade (each leaving a surviving `DeletionRecord`), then the account's memberships, notifications, reset tokens, audit entries, and billing events are removed, the Stripe subscription is cancelled immediately and the Stripe customer deleted, and finally the `users` row is deleted.
+7. On success, the browser is signed out and redirected to the Landing Page with `?deleted=1`, showing the "Your account and all its data have been deleted" banner.
+8. Re-authenticating with the deleted account's credentials fails with the generic invalid-credentials response (non-enumerating).
+
+**Alternate Path A — Wrong Current Password:**
+- At step 3, if the current password is wrong, the server returns 400 `invalid_current_password` and the screen shows an inline error; the user stays on the form. Deliberately not 401 — a 401 would be misread by the client as session expiry and routed to the login gate.
+
+**Alternate Path B — Deletion Fails Partway:**
+- At step 6, if any step of the account cascade fails, the system does not show a false success. It names the failed step and the completed steps, leaves the account fully intact and signed in, and offers a retry (every step is idempotent, mirroring Flow 5 Alternate Path B). The `users` row is only deleted after every prior step succeeds.
+
+**Alternate Path C — Stale Session After Deletion:**
+- A browser tab that still holds a decryptable session cookie from a deleted account (e.g., reopened after deletion) passes the optimistic web proxy but fails closed on every API request with 401/404 (user not found) — the proxy is not the authorization boundary.
+
+### States Referenced
+
+| Screen | States |
+|---|---|
+| Profile & Security | Loaded, Password Submitting, Password Updated, Password Error, Confirming (delete), Ready to Confirm, Deleting, Deletion Partial/Failed, Offline |
+| Landing Page | Account Deleted (`?deleted=1` banner) |
+
 ## Global Flows
 
 ### Authentication Gate
 
 - Any workspace or report URL accessed while unauthenticated → redirect to Sign Up / Login, then back to the originally requested screen after successful authentication.
 - A shared report link (read-only, [[features]] FEAT-046) does not require authentication to view — access is scoped to possession of the link, not account identity, consistent with [[README]]'s v1 read-only sharing model.
+- Sign out is the single Auth.js `signOut` affordance on the Profile & Security screen (Flow 6, [[features]] FEAT-052); it clears the session cookie and returns the user to the Landing Page.
+- After account deletion (Flow 6), the session cookie is cleared and the user lands on the Landing Page with the `?deleted=1` confirmation. A deleted account cannot re-authenticate — login returns the same generic invalid-credentials response it returns for a nonexistent account, preserving the account-existence non-enumeration rule.
 
 ### Engine & Run Error Recovery
 
