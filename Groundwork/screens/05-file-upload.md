@@ -3,7 +3,7 @@
 **Route:** `/workspaces/:id/upload`
 **Platform:** Both (drag-and-drop enhanced on web; native file picker on mobile)
 **Purpose:** Let the user bring one or more files into the workspace ([[features]] FEAT-003), and resolve any filename collision with an already-uploaded dataset before ingest begins ([[features]] FEAT-049).
-**Entry Points:** [[04-workspace-home|Workspace Home]] ("Upload data").
+**Entry Points:** [[04-workspace-home|Workspace Home]] ("Upload data" empty-state CTA; Datasets panel "Add data" once data exists).
 **Exit Points:** [[06-ingest-progress|Ingest Progress]] (on successful upload start), [[17-egress-audit-log|Egress / Audit Log]] (zero-retention notice link, opens in a new context without abandoning the in-progress upload).
 
 ### Layout
